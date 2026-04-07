@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-const _productionUrl = 'https://web-production-5e667.up.railway.app';
+const _productionUrl = 'https://qadam-backend.onrender.com';
 
 /// Returns the correct backend URL depending on platform.
 /// - Web / Release → production Railway backend

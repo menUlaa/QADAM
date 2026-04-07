@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import Optional
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.db import get_db
@@ -289,15 +290,31 @@ def upload_cv(
     with dest.open("wb") as f:
         shutil.copyfileobj(file.file, f)
 
+    from datetime import datetime
     user.cv_url = f"/uploads/{filename}"
+    user.cv_filename = file.filename
+    user.cv_uploaded_at = datetime.utcnow()
     db.commit()
-    return {"cv_url": user.cv_url}
+    return {
+        "cv_url": user.cv_url,
+        "cv_filename": user.cv_filename,
+        "cv_uploaded_at": user.cv_uploaded_at.isoformat(),
+    }
 
 
 # ── Update profile ─────────────────────────────────────────────────────────────
 
 class UpdateProfileBody(BaseModel):
-    name: str
+    name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    bio: Optional[str] = None
+    open_to_work: Optional[bool] = None
+    skills: Optional[list] = None
+    university_name: Optional[str] = None
+    specialty: Optional[str] = None
+    study_year: Optional[int] = None
+    portfolio_url: Optional[str] = None
 
 
 @router.put("/profile", response_model=UserResponse)
@@ -312,9 +329,30 @@ def update_profile(
     user = get_user_by_id(db, payload.get("user_id"))
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
-    if not body.name.strip():
-        raise HTTPException(status_code=400, detail="Name cannot be empty")
-    user.name = body.name.strip()
+
+    if body.first_name is not None:
+        user.first_name = body.first_name.strip()
+    if body.last_name is not None:
+        user.last_name = body.last_name.strip()
+    if body.first_name is not None or body.last_name is not None:
+        user.name = f"{user.first_name} {user.last_name}".strip()
+    if body.name is not None and body.name.strip():
+        user.name = body.name.strip()
+    if body.bio is not None:
+        user.bio = body.bio.strip() or None
+    if body.open_to_work is not None:
+        user.open_to_work = body.open_to_work
+    if body.skills is not None:
+        user.skills = [s.strip() for s in body.skills if s.strip()]
+    if body.university_name is not None:
+        user.university_name = body.university_name.strip() or None
+    if body.specialty is not None:
+        user.specialty = body.specialty.strip() or None
+    if body.study_year is not None:
+        user.study_year = body.study_year
+    if body.portfolio_url is not None:
+        user.portfolio_url = body.portfolio_url.strip() or None
+
     db.commit()
     db.refresh(user)
     return UserResponse.model_validate(user)

@@ -34,11 +34,39 @@ class UserResponse(BaseModel):
     specialty: Optional[str] = None
     study_year: Optional[int] = None
     cv_url: Optional[str] = None
+    cv_filename: Optional[str] = None
+    cv_uploaded_at: Optional[str] = None
     skills: Optional[List[str]] = None
     portfolio_url: Optional[str] = None
+    bio: Optional[str] = None
+    open_to_work: bool = True
 
     class Config:
         from_attributes = True
+
+    @classmethod
+    def model_validate(cls, obj, **kwargs):
+        data = {
+            "id": obj.id,
+            "email": obj.email,
+            "first_name": obj.first_name or "",
+            "last_name": obj.last_name or "",
+            "name": obj.name or "",
+            "is_admin": obj.is_admin,
+            "is_verified": obj.is_verified,
+            "is_graduate": obj.is_graduate,
+            "university_name": obj.university_name,
+            "specialty": obj.specialty,
+            "study_year": obj.study_year,
+            "cv_url": obj.cv_url,
+            "cv_filename": obj.cv_filename,
+            "cv_uploaded_at": obj.cv_uploaded_at.isoformat() if obj.cv_uploaded_at else None,
+            "skills": obj.skills or [],
+            "portfolio_url": obj.portfolio_url,
+            "bio": obj.bio,
+            "open_to_work": obj.open_to_work if obj.open_to_work is not None else True,
+        }
+        return cls(**data)
 
 
 def get_user_by_email(db: Session, email: str) -> Optional[User]:

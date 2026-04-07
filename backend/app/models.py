@@ -21,9 +21,13 @@ class User(Base):
     university_name = Column(String(300), nullable=True)
     specialty = Column(String(200), nullable=True)
     study_year = Column(Integer, nullable=True)
-    cv_url = Column(String(500), nullable=True)       # path to uploaded CV
+    cv_url = Column(String(500), nullable=True)
+    cv_filename = Column(String(200), nullable=True)
+    cv_uploaded_at = Column(DateTime, nullable=True)
     skills = Column(JSON, default=list)
     portfolio_url = Column(String(500), nullable=True)
+    bio = Column(Text, nullable=True)
+    open_to_work = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     applications = relationship("Application", back_populates="user")

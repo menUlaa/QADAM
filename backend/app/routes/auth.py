@@ -98,8 +98,30 @@ def list_universities():
     return {"universities": KZ_UNIVERSITIES, "specialties": KZ_SPECIALTIES}
 
 
+@router.get("/debug-db")
+def debug_db(db: Session = Depends(get_db)):
+    """Temporary debug endpoint to test DB connectivity."""
+    import traceback
+    try:
+        from app.models import User
+        count = db.query(User).count()
+        return {"status": "ok", "user_count": count}
+    except Exception as e:
+        return {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
+
+
 @router.post("/register", response_model=dict)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
+    import traceback as _tb
+    try:
+        return _do_register(user_data, db)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"INTERNAL: {e} | {_tb.format_exc()}")
+
+
+def _do_register(user_data: UserCreate, db: Session):
     if get_user_by_email(db, user_data.email):
         raise HTTPException(status_code=400, detail="Email already registered")
     if len(user_data.password) < 6:

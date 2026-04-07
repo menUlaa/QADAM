@@ -115,8 +115,8 @@ class ApiService {
     throw Exception('Failed to load universities');
   }
 
-  /// Upload CV (PDF)
-  Future<String> uploadCv(List<int> bytes, String fileName) async {
+  /// Upload CV (PDF) — returns {cv_url, cv_filename, cv_uploaded_at}
+  Future<Map<String, String?>> uploadCv(List<int> bytes, String fileName) async {
     final token = await _authService.getToken();
     final request = http.MultipartRequest(
       'POST',
@@ -131,7 +131,12 @@ class ApiService {
     final streamed = await request.send();
     final resp = await http.Response.fromStream(streamed);
     if (resp.statusCode == 200) {
-      return json.decode(resp.body)['cv_url'] as String;
+      final body = json.decode(resp.body) as Map<String, dynamic>;
+      return {
+        'cv_url': body['cv_url'] as String?,
+        'cv_filename': body['cv_filename'] as String?,
+        'cv_uploaded_at': body['cv_uploaded_at'] as String?,
+      };
     }
     throw Exception(json.decode(resp.body)['detail'] ?? 'Upload failed');
   }

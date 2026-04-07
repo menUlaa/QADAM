@@ -149,19 +149,42 @@ class AuthService {
     }
   }
 
-  /// Update profile name
-  Future<void> updateProfile({required String name}) async {
+  /// Update profile fields (any subset)
+  Future<User> updateProfile({
+    String? name,
+    String? firstName,
+    String? lastName,
+    String? bio,
+    bool? openToWork,
+    List<String>? skills,
+    String? universityName,
+    String? specialty,
+    int? studyYear,
+    String? portfolioUrl,
+  }) async {
     final token = await getToken();
+    final body = <String, dynamic>{};
+    if (name != null) body['name'] = name;
+    if (firstName != null) body['first_name'] = firstName;
+    if (lastName != null) body['last_name'] = lastName;
+    if (bio != null) body['bio'] = bio;
+    if (openToWork != null) body['open_to_work'] = openToWork;
+    if (skills != null) body['skills'] = skills;
+    if (universityName != null) body['university_name'] = universityName;
+    if (specialty != null) body['specialty'] = specialty;
+    if (studyYear != null) body['study_year'] = studyYear;
+    if (portfolioUrl != null) body['portfolio_url'] = portfolioUrl;
+
     final response = await http.put(
       Uri.parse('$baseUrl/auth/profile'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
-      body: json.encode({'name': name}),
+      body: json.encode(body),
     );
     if (response.statusCode == 200) {
       final prefs = await SharedPreferences.getInstance();
-      final data = json.decode(response.body);
-      final user = User.fromJson(data);
+      final user = User.fromJson(json.decode(response.body));
       await prefs.setString(_userKey, json.encode(user.toJson()));
+      return user;
     } else {
       final error = json.decode(response.body);
       throw Exception(error['detail'] ?? 'Update failed');

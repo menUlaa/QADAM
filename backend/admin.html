@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Intern KZ — Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .status-pending  { background:#FEF9C3; color:#854D0E; }
+    .status-accepted { background:#DCFCE7; color:#166534; }
+    .status-rejected { background:#FEE2E2; color:#991B1B; }
+    .sidebar-link { display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:10px; cursor:pointer; transition:.15s; color:#94A3B8; }
+    .sidebar-link:hover { background:rgba(255,255,255,.07); color:#fff; }
+    .sidebar-link.active { background:rgba(108,125,255,.25); color:#A5B4FC; }
+    .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; align-items:center; justify-content:center; }
+    .modal-bg.open { display:flex; }
+    input,select,textarea { background:#F8FAFC; border:1.5px solid #E2E8F0; border-radius:8px; padding:8px 12px; width:100%; outline:none; transition:.15s; }
+    input:focus,select:focus,textarea:focus { border-color:#6C7DFF; background:#fff; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+<!-- ════════ LOGIN ════════ -->
+<div id="loginScreen" class="min-h-screen flex items-center justify-center">
+  <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="w-10 h-10 rounded-xl bg-indigo-500 flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <div>
+        <div class="font-bold text-lg text-slate-800">Intern KZ</div>
+        <div class="text-xs text-slate-400">Admin Panel</div>
+      </div>
+    </div>
+    <div class="space-y-3">
+      <input id="loginEmail" type="email" placeholder="Email" />
+      <input id="loginPassword" type="password" placeholder="Пароль" />
+      <div id="loginError" class="text-red-500 text-sm hidden"></div>
+      <button onclick="doLogin()" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2.5 rounded-xl transition">Войти</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ DASHBOARD ════════ -->
+<div id="dashboard" class="hidden flex min-h-screen">
+
+  <!-- Sidebar -->
+  <aside class="w-56 bg-slate-900 flex flex-col py-6 px-3 shrink-0">
+    <div class="px-3 mb-6">
+      <div class="font-bold text-white text-base">Intern KZ</div>
+      <div class="text-slate-400 text-xs">Admin Panel</div>
+    </div>
+    <nav class="flex-1 space-y-1">
+      <div class="sidebar-link active" onclick="showTab('internships')">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>
+        Стажировки
+      </div>
+      <div class="sidebar-link" onclick="showTab('applications')">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        Заявки
+      </div>
+    </nav>
+    <button onclick="logout()" class="sidebar-link text-sm mt-4">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+      Выйти
+    </button>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 p-6 overflow-y-auto">
+
+    <!-- Stats -->
+    <div id="statsRow" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+
+    <!-- ── INTERNSHIPS TAB ── -->
+    <div id="tabInternships">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold text-slate-800">Стажировки</h2>
+        <button onclick="openCreateModal()" class="bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">+ Добавить</button>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 border-b border-slate-100">
+            <tr>
+              <th class="text-left px-4 py-3 text-slate-500 font-semibold">#</th>
+              <th class="text-left px-4 py-3 text-slate-500 font-semibold">Название</th>
+              <th class="text-left px-4 py-3 text-slate-500 font-semibold">Компания</th>
+              <th class="text-left px-4 py-3 text-slate-500 font-semibold">Город</th>
+              <th class="text-left px-4 py-3 text-slate-500 font-semibold">Категория</th>
+              <th class="text-left px-4 py-3 text-slate-500 font-semibold">Зарплата</th>
+              <th class="text-left px-4 py-3 text-slate-500 font-semibold">Действия</th>
+            </tr>
+          </thead>
+          <tbody id="internshipsTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── APPLICATIONS TAB ── -->
+    <div id="tabApplications" class="hidden">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold text-slate-800">Заявки</h2>
+        <div class="flex gap-2 text-sm">
+          <button onclick="filterApps('all')" id="filterAll" class="px-3 py-1.5 rounded-lg bg-indigo-500 text-white font-medium">Все</button>
+          <button onclick="filterApps('pending')" id="filterPending" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 font-medium hover:bg-slate-200">Ожидают</button>
+          <button onclick="filterApps('accepted')" id="filterAccepted" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 font-medium hover:bg-slate-200">Приняты</button>
+          <button onclick="filterApps('rejected')" id="filterRejected" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 font-medium hover:bg-slate-200">Отклонены</button>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 border-b border-slate-100">
+            <tr>
+              <th class="text-left px-4 py-3 text-slate-500 font-semibold">#</th>
+              <th class="text-left px-4 py-3 text-slate-500 font-semibold">Кандидат</th>
+              <th class="text-left px-4 py-3 text-slate-500 font-semibold">Стажировка</th>
+              <th class="text-left px-4 py-3 text-slate-500 font-semibold">Сообщение</th>
+              <th class="text-left px-4 py-3 text-slate-500 font-semibold">Дата</th>
+              <th class="text-left px-4 py-3 text-slate-500 font-semibold">Статус</th>
+              <th class="text-left px-4 py-3 text-slate-500 font-semibold">Действия</th>
+            </tr>
+          </thead>
+          <tbody id="applicationsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ════════ INTERNSHIP MODAL ════════ -->
+<div id="internshipModal" class="modal-bg" onclick="if(event.target===this)closeModal()">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+      <h3 id="modalTitle" class="font-bold text-lg text-slate-800">Добавить стажировку</h3>
+      <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+    </div>
+    <div class="p-6 grid grid-cols-2 gap-4">
+      <div class="col-span-2"><label class="block text-xs font-semibold text-slate-500 mb-1">Название *</label><input id="fTitle" placeholder="Junior Flutter Developer" /></div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Компания *</label><input id="fCompany" placeholder="TechNova" /></div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Категория *</label>
+        <select id="fCategory">
+          <option>IT</option><option>Финансы</option><option>Дизайн</option><option>Маркетинг</option><option>HR</option>
+        </select>
+      </div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Город *</label><input id="fCity" placeholder="Астана" /></div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Формат *</label>
+        <select id="fFormat"><option>Remote</option><option>Onsite</option><option>Hybrid</option></select>
+      </div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Оплата</label>
+        <select id="fPaid"><option value="true">Платная</option><option value="false">Без оплаты</option></select>
+      </div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Зарплата (₸)</label><input id="fSalary" type="number" placeholder="150000" /></div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Длительность *</label><input id="fDuration" placeholder="3 месяца" /></div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Email для связи *</label><input id="fEmail" type="email" placeholder="hr@company.kz" /></div>
+      <div class="col-span-2"><label class="block text-xs font-semibold text-slate-500 mb-1">Описание *</label><textarea id="fDesc" rows="3" placeholder="Краткое описание стажировки..."></textarea></div>
+      <div class="col-span-2"><label class="block text-xs font-semibold text-slate-500 mb-1">Обязанности (через запятую)</label><input id="fResp" placeholder="Разработка UI, написание тестов" /></div>
+      <div class="col-span-2"><label class="block text-xs font-semibold text-slate-500 mb-1">Требования (через запятую)</label><input id="fReqs" placeholder="Знание Flutter, опыт от 6 мес" /></div>
+      <div class="col-span-2"><label class="block text-xs font-semibold text-slate-500 mb-1">Навыки (через запятую)</label><input id="fSkills" placeholder="Flutter, Dart, REST API" /></div>
+      <div class="col-span-2"><label class="block text-xs font-semibold text-slate-500 mb-1">Теги (через запятую)</label><input id="fTags" placeholder="flutter, mobile, junior" /></div>
+    </div>
+    <div class="px-6 pb-6 flex gap-3 justify-end">
+      <button onclick="closeModal()" class="px-5 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium">Отмена</button>
+      <button onclick="saveInternship()" class="px-5 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-semibold transition">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ CONFIRM DELETE ════════ -->
+<div id="confirmModal" class="modal-bg">
+  <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 text-center">
+    <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+    </div>
+    <h3 class="font-bold text-lg text-slate-800 mb-2">Удалить стажировку?</h3>
+    <p class="text-slate-500 text-sm mb-5">Это действие нельзя отменить. Все заявки на эту стажировку тоже будут удалены.</p>
+    <div class="flex gap-3">
+      <button onclick="closeConfirm()" class="flex-1 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium">Отмена</button>
+      <button id="confirmDeleteBtn" class="flex-1 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold transition">Удалить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+let token = localStorage.getItem('admin_token');
+let allApplications = [];
+let editingId = null;
+
+// ── Auth ───────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.classList.add('hidden');
+  try {
+    const res = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email, password})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Ошибка входа');
+    if (!data.user.is_admin) throw new Error('У вас нет доступа к админ-панели');
+    token = data.access_token;
+    localStorage.setItem('admin_token', token);
+    showDashboard();
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+function logout() {
+  localStorage.removeItem('admin_token');
+  token = null;
+  document.getElementById('dashboard').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  if (token) showDashboard();
+  document.getElementById('loginPassword').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+});
+
+async function showDashboard() {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+  await loadStats();
+  await loadInternships();
+}
+
+// ── Stats ──────────────────────────────────────────────────────────────────────
+async function loadStats() {
+  const data = await apiFetch('/admin/stats');
+  const row = document.getElementById('statsRow');
+  const cards = [
+    {label:'Стажировок', value:data.internships, color:'indigo'},
+    {label:'Заявок',     value:data.applications, color:'blue'},
+    {label:'Ожидают',    value:data.pending,  color:'yellow'},
+    {label:'Принято',    value:data.accepted, color:'green'},
+  ];
+  row.innerHTML = cards.map(c=>`
+    <div class="bg-white rounded-2xl shadow-sm p-5">
+      <div class="text-3xl font-black text-slate-800">${c.value}</div>
+      <div class="text-sm text-slate-400 mt-1 font-medium">${c.label}</div>
+    </div>`).join('');
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────────────────
+function showTab(tab) {
+  document.getElementById('tabInternships').classList.toggle('hidden', tab!=='internships');
+  document.getElementById('tabApplications').classList.toggle('hidden', tab!=='applications');
+  document.querySelectorAll('.sidebar-link').forEach((el,i)=>{
+    el.classList.toggle('active', (i===0&&tab==='internships')||(i===1&&tab==='applications'));
+  });
+  if (tab==='applications') loadApplications();
+}
+
+// ── Internships ────────────────────────────────────────────────────────────────
+async function loadInternships() {
+  const list = await apiFetch('/admin/internships');
+  const tbody = document.getElementById('internshipsTable');
+  if (!list.length) { tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">Нет стажировок</td></tr>`; return; }
+  tbody.innerHTML = list.map(it=>`
+    <tr class="border-t border-slate-50 hover:bg-slate-50 transition">
+      <td class="px-4 py-3 text-slate-400">${it.id}</td>
+      <td class="px-4 py-3 font-semibold text-slate-800">${it.title}</td>
+      <td class="px-4 py-3 text-slate-600">${it.company}</td>
+      <td class="px-4 py-3 text-slate-500">${it.city}</td>
+      <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-600">${it.category}</span></td>
+      <td class="px-4 py-3 text-slate-600">${it.salary_kzt ? it.salary_kzt.toLocaleString()+' ₸' : '—'}</td>
+      <td class="px-4 py-3">
+        <div class="flex gap-2">
+          <button onclick='openEditModal(${JSON.stringify(it)})' class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium transition">Изменить</button>
+          <button onclick="confirmDelete(${it.id})" class="text-xs px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 font-medium transition">Удалить</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+// ── Applications ───────────────────────────────────────────────────────────────
+async function loadApplications() {
+  allApplications = await apiFetch('/admin/applications');
+  renderApplications(allApplications);
+}
+
+function renderApplications(list) {
+  const tbody = document.getElementById('applicationsTable');
+  if (!list.length) { tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">Нет заявок</td></tr>`; return; }
+  tbody.innerHTML = list.map(a=>`
+    <tr class="border-t border-slate-50 hover:bg-slate-50 transition">
+      <td class="px-4 py-3 text-slate-400">${a.id}</td>
+      <td class="px-4 py-3">
+        <div class="font-semibold text-slate-800">${a.user_name}</div>
+        <div class="text-xs text-slate-400">${a.user_email}</div>
+      </td>
+      <td class="px-4 py-3">
+        <div class="font-medium text-slate-700">${a.internship_title}</div>
+        <div class="text-xs text-slate-400">${a.internship_company}</div>
+      </td>
+      <td class="px-4 py-3 text-slate-500 max-w-xs truncate">${a.message || '—'}</td>
+      <td class="px-4 py-3 text-slate-400 text-xs">${a.created_at ? a.created_at.slice(0,10) : '—'}</td>
+      <td class="px-4 py-3"><span class="status-${a.status} px-2.5 py-1 rounded-full text-xs font-bold">${statusLabel(a.status)}</span></td>
+      <td class="px-4 py-3">
+        <div class="flex gap-1.5">
+          ${a.status!=='accepted'?`<button onclick="setStatus(${a.id},'accepted')" class="text-xs px-2.5 py-1 rounded-lg bg-green-50 hover:bg-green-100 text-green-600 font-semibold transition">✓ Принять</button>`:''}
+          ${a.status!=='rejected'?`<button onclick="setStatus(${a.id},'rejected')" class="text-xs px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 font-semibold transition">✕ Отклонить</button>`:''}
+          ${a.status!=='pending'?`<button onclick="setStatus(${a.id},'pending')" class="text-xs px-2.5 py-1 rounded-lg bg-yellow-50 hover:bg-yellow-100 text-yellow-600 font-semibold transition">↩ Сброс</button>`:''}
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function filterApps(f) {
+  ['all','pending','accepted','rejected'].forEach(s=>{
+    const btn = document.getElementById('filter'+s[0].toUpperCase()+s.slice(1));
+    btn.className = s===f
+      ? 'px-3 py-1.5 rounded-lg bg-indigo-500 text-white font-medium text-sm'
+      : 'px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 font-medium hover:bg-slate-200 text-sm';
+  });
+  renderApplications(f==='all' ? allApplications : allApplications.filter(a=>a.status===f));
+}
+
+async function setStatus(id, status) {
+  await apiFetch(`/admin/applications/${id}/status`, 'PUT', {status});
+  await loadStats();
+  await loadApplications();
+}
+
+function statusLabel(s) {
+  return s==='accepted'?'Принят':s==='rejected'?'Отклонён':'Ожидает';
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────────
+function openCreateModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Добавить стажировку';
+  ['fTitle','fCompany','fCity','fSalary','fDuration','fEmail','fDesc','fResp','fReqs','fSkills','fTags'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fCategory').value='IT';
+  document.getElementById('fFormat').value='Remote';
+  document.getElementById('fPaid').value='true';
+  document.getElementById('internshipModal').classList.add('open');
+}
+
+function openEditModal(it) {
+  editingId = it.id;
+  document.getElementById('modalTitle').textContent = 'Редактировать стажировку';
+  document.getElementById('fTitle').value = it.title || '';
+  document.getElementById('fCompany').value = it.company || '';
+  document.getElementById('fCategory').value = it.category || 'IT';
+  document.getElementById('fCity').value = it.city || '';
+  document.getElementById('fFormat').value = it.format || 'Remote';
+  document.getElementById('fPaid').value = it.paid ? 'true' : 'false';
+  document.getElementById('fSalary').value = it.salary_kzt || '';
+  document.getElementById('fDuration').value = it.duration || '';
+  document.getElementById('fEmail').value = it.contact_email || '';
+  document.getElementById('fDesc').value = it.description || '';
+  document.getElementById('fResp').value = (it.responsibilities||[]).join(', ');
+  document.getElementById('fReqs').value = (it.requirements||[]).join(', ');
+  document.getElementById('fSkills').value = (it.skills||[]).join(', ');
+  document.getElementById('fTags').value = (it.tags||[]).join(', ');
+  document.getElementById('internshipModal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('internshipModal').classList.remove('open'); }
+
+async function saveInternship() {
+  const split = v => v.split(',').map(s=>s.trim()).filter(Boolean);
+  const body = {
+    title: document.getElementById('fTitle').value.trim(),
+    company: document.getElementById('fCompany').value.trim(),
+    category: document.getElementById('fCategory').value,
+    city: document.getElementById('fCity').value.trim(),
+    format: document.getElementById('fFormat').value,
+    paid: document.getElementById('fPaid').value === 'true',
+    salary_kzt: parseInt(document.getElementById('fSalary').value)||null,
+    duration: document.getElementById('fDuration').value.trim(),
+    contact_email: document.getElementById('fEmail').value.trim(),
+    description: document.getElementById('fDesc').value.trim(),
+    responsibilities: split(document.getElementById('fResp').value),
+    requirements: split(document.getElementById('fReqs').value),
+    skills: split(document.getElementById('fSkills').value),
+    tags: split(document.getElementById('fTags').value),
+  };
+  if (!body.title || !body.company || !body.city || !body.duration || !body.contact_email) {
+    alert('Заполни обязательные поля'); return;
+  }
+  if (editingId) {
+    await apiFetch(`/admin/internships/${editingId}`, 'PUT', body);
+  } else {
+    await apiFetch('/admin/internships', 'POST', body);
+  }
+  closeModal();
+  await loadStats();
+  await loadInternships();
+}
+
+// ── Delete ─────────────────────────────────────────────────────────────────────
+function confirmDelete(id) {
+  document.getElementById('confirmModal').classList.add('open');
+  document.getElementById('confirmDeleteBtn').onclick = async () => {
+    await apiFetch(`/admin/internships/${id}`, 'DELETE');
+    closeConfirm();
+    await loadStats();
+    await loadInternships();
+  };
+}
+function closeConfirm() { document.getElementById('confirmModal').classList.remove('open'); }
+
+// ── API helper ─────────────────────────────────────────────────────────────────
+async function apiFetch(path, method='GET', body=null) {
+  const opts = {
+    method,
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API + path, opts);
+  if (res.status === 401) { logout(); return {}; }
+  if (!res.ok) { const e = await res.json().catch(()=>{}); console.error(e); return {}; }
+  if (res.status === 204) return {};
+  return res.json();
+}
+</script>
+</body>
+</html>

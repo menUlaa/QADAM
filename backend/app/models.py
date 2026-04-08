@@ -102,13 +102,16 @@ class Company(Base):
 class University(Base):
     __tablename__ = "universities"
 
-    id         = Column(Integer, primary_key=True, index=True)
-    name       = Column(String(300), nullable=False, unique=True)
-    short_name = Column(String(50),  nullable=True)   # "AITU", "КазНУ"
-    city       = Column(String(100), default="")
-    country    = Column(String(100), default="Казахстан")
-    website    = Column(String(300), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    id              = Column(Integer, primary_key=True, index=True)
+    name            = Column(String(300), nullable=False, unique=True)
+    short_name      = Column(String(50),  nullable=True)
+    city            = Column(String(100), default="")
+    country         = Column(String(100), default="Казахстан")
+    website         = Column(String(300), nullable=True)
+    # Login fields (kept for university portal login)
+    email           = Column(String(200), unique=True, nullable=True, index=True)
+    hashed_password = Column(String(200), nullable=True)
+    created_at      = Column(DateTime, default=datetime.utcnow)
 
     students   = relationship("StudentUniversity", back_populates="university")
 

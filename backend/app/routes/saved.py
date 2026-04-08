@@ -4,7 +4,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session, joinedload
 from typing import List
 from app.db import get_db
-from app.models import SavedInternship, Internship, InternshipSkill
+from app.models import SavedInternship, Internship
 from app.auth import decode_access_token
 from app.routes.internships import _to_dict, _base_q
 

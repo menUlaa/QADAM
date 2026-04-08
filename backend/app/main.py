@@ -15,8 +15,13 @@ from app.routes.notifications import router as notifications_router
 from app.db import Base, engine
 import app.models  # noqa: F401 — registers all models with Base
 from app import migrate
+import logging
 
-migrate.run()
+logging.basicConfig(level=logging.INFO)
+try:
+    migrate.run()
+except Exception as _e:
+    logging.error(f"Migration startup error (non-fatal): {_e}")
 
 UPLOADS_DIR = Path("uploads")
 UPLOADS_DIR.mkdir(exist_ok=True)

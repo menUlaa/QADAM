@@ -257,6 +257,23 @@ def update_application_status(
         raise HTTPException(status_code=400, detail="Invalid status")
 
     app.status = new_status
+
+    # Create notification for the student
+    from app.routes.notifications import create_notification
+    status_labels = {
+        "accepted": ("Заявка принята! 🎉", f"Вас приняли на стажировку «{internship.title}» в {company.name}"),
+        "rejected": ("Обновление по заявке", f"К сожалению, ваша заявка на «{internship.title}» отклонена"),
+        "pending":  ("Заявка на рассмотрении", f"Ваша заявка на «{internship.title}» взята на рассмотрение"),
+    }
+    title, body_text = status_labels[new_status]
+    notif = create_notification(
+        db, user_id=app.user_id,
+        type="application_status",
+        title=title, body=body_text,
+        related_internship_id=internship.id,
+        related_application_id=app.id,
+    )
+    db.add(notif)
     db.commit()
     return {"message": f"Status updated to {new_status}"}
 

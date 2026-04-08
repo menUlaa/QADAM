@@ -10,10 +10,13 @@ from app.routes.admin import router as admin_router
 from app.routes.university import router as university_router
 from app.routes.company import router as company_router
 from app.routes.ai import router as ai_router
+from app.routes.saved import router as saved_router
+from app.routes.notifications import router as notifications_router
 from app.db import Base, engine
 import app.models  # noqa: F401 — registers all models with Base
+from app import migrate
 
-Base.metadata.create_all(bind=engine)
+migrate.run()
 
 UPLOADS_DIR = Path("uploads")
 UPLOADS_DIR.mkdir(exist_ok=True)
@@ -36,7 +39,9 @@ app.include_router(applications_router, prefix="/applications", tags=["Applicati
 app.include_router(admin_router, prefix="/admin", tags=["Admin"])
 app.include_router(university_router, prefix="/university", tags=["University"])
 app.include_router(company_router, prefix="/company", tags=["Company"])
-app.include_router(ai_router, prefix="/ai", tags=["AI"])
+app.include_router(ai_router,            prefix="/ai",            tags=["AI"])
+app.include_router(saved_router,         prefix="/saved",          tags=["Saved"])
+app.include_router(notifications_router, prefix="/notifications",   tags=["Notifications"])
 
 ADMIN_HTML = Path(__file__).parent.parent / "admin.html"
 

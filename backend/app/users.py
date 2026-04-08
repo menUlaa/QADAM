@@ -46,25 +46,26 @@ class UserResponse(BaseModel):
 
     @classmethod
     def model_validate(cls, obj, **kwargs):
+        cv_uploaded_at = getattr(obj, "cv_uploaded_at", None)
         data = {
             "id": obj.id,
             "email": obj.email,
-            "first_name": obj.first_name or "",
-            "last_name": obj.last_name or "",
-            "name": obj.name or "",
-            "is_admin": obj.is_admin,
-            "is_verified": obj.is_verified,
-            "is_graduate": obj.is_graduate,
-            "university_name": obj.university_name,
-            "specialty": obj.specialty,
-            "study_year": obj.study_year,
-            "cv_url": obj.cv_url,
-            "cv_filename": obj.cv_filename,
-            "cv_uploaded_at": obj.cv_uploaded_at.isoformat() if obj.cv_uploaded_at else None,
-            "skills": obj.skills or [],
-            "portfolio_url": obj.portfolio_url,
-            "bio": obj.bio,
-            "open_to_work": obj.open_to_work if obj.open_to_work is not None else True,
+            "first_name": getattr(obj, "first_name", "") or "",
+            "last_name": getattr(obj, "last_name", "") or "",
+            "name": getattr(obj, "name", "") or "",
+            "is_admin": getattr(obj, "is_admin", False),
+            "is_verified": getattr(obj, "is_verified", True),
+            "is_graduate": getattr(obj, "is_graduate", False),
+            "university_name": getattr(obj, "university_name", None),
+            "specialty": getattr(obj, "specialty", None),
+            "study_year": getattr(obj, "study_year", None),
+            "cv_url": getattr(obj, "cv_url", None),
+            "cv_filename": getattr(obj, "cv_filename", None),
+            "cv_uploaded_at": cv_uploaded_at.isoformat() if cv_uploaded_at else None,
+            "skills": getattr(obj, "skills", None) or [],
+            "portfolio_url": getattr(obj, "portfolio_url", None),
+            "bio": getattr(obj, "bio", None),
+            "open_to_work": getattr(obj, "open_to_work", True) or True,
         }
         return cls(**data)
 

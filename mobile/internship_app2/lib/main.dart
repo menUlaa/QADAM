@@ -7,6 +7,8 @@ import 'package:internship_app2/screens/onboarding_screen.dart';
 import 'package:internship_app2/screens/role_selection_screen.dart';
 import 'package:internship_app2/screens/splash_screen.dart';
 import 'package:internship_app2/services/auth_service.dart';
+import 'package:internship_app2/services/base_url.dart';
+import 'package:http/http.dart' as http;
 
 final themeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
 
@@ -16,7 +18,18 @@ void main() async {
   final isDark = prefs.getBool('dark_mode') ?? false;
   themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
   await initLocale();
+  // Wake up Render backend immediately so it's ready when user tries to login
+  _pingBackend();
   runApp(const QadamApp());
+}
+
+/// Fire-and-forget ping to wake up Render free-tier server on app start.
+/// By the time user fills credentials, server is already warm.
+void _pingBackend() {
+  http.get(Uri.parse('$apiBaseUrl/')).timeout(
+    const Duration(seconds: 60),
+    onTimeout: () => http.Response('timeout', 408),
+  ).catchError((_) => http.Response('error', 500));
 }
 
 class QadamApp extends StatelessWidget {

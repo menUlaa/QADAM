@@ -49,17 +49,20 @@ class AuthService {
         if (specialty != null && specialty.isNotEmpty)
           'specialty': specialty,
       }),
+    ).timeout(
+      const Duration(seconds: 60),
+      onTimeout: () => throw Exception(
+        'Сервер просыпается — подождите и попробуйте снова',
+      ),
     );
 
     if (response.statusCode == 200) {
       final body = json.decode(response.body);
-      // If response has access_token — auto-login (email not required)
       if (body.containsKey('access_token')) {
         final authResponse = AuthResponse.fromJson(body);
         await _saveAuth(authResponse);
         return RegisterResult(requiresVerification: false);
       }
-      // Otherwise backend sent verification email
       return RegisterResult(requiresVerification: true);
     } else {
       final error = json.decode(response.body);
@@ -67,28 +70,45 @@ class AuthService {
     }
   }
 
-  /// Login user
+  /// Login user — with retry on cold-start timeout (Render free tier sleeps)
   Future<AuthResponse> login({
     required String email,
     required String password,
   }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'email': email,
-        'password': password,
-      }),
-    );
+    Exception? lastError;
+    // Try up to 2 times: first may hit cold-start, second should succeed
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final response = await http.post(
+          Uri.parse('$baseUrl/auth/login'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({'email': email, 'password': password}),
+        ).timeout(
+          const Duration(seconds: 60),
+          onTimeout: () => throw Exception(
+            'Сервер просыпается — подождите и попробуйте снова',
+          ),
+        );
 
-    if (response.statusCode == 200) {
-      final authResponse = AuthResponse.fromJson(json.decode(response.body));
-      await _saveAuth(authResponse);
-      return authResponse;
-    } else {
-      final error = json.decode(response.body);
-      throw Exception(error['detail'] ?? 'Login failed');
+        if (response.statusCode == 200) {
+          final authResponse = AuthResponse.fromJson(json.decode(response.body));
+          await _saveAuth(authResponse);
+          return authResponse;
+        } else {
+          final error = json.decode(response.body);
+          throw Exception(error['detail'] ?? 'Login failed');
+        }
+      } catch (e) {
+        lastError = e is Exception ? e : Exception(e.toString());
+        // Only retry on network/timeout errors, not on auth errors
+        final msg = e.toString();
+        final isAuthError = msg.contains('Invalid') || msg.contains('verify');
+        if (isAuthError || attempt == 1) rethrow;
+        // Brief pause before retry on network error
+        await Future.delayed(const Duration(seconds: 2));
+      }
     }
+    throw lastError!;
   }
 
   /// Save auth data to local storage

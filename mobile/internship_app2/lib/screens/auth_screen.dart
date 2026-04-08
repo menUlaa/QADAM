@@ -168,7 +168,16 @@ class _AuthScreenState extends State<AuthScreen>
         }
       }
     } catch (e) {
-      setState(() => _error = e.toString().replaceAll('Exception: ', ''));
+      final msg = e.toString().replaceAll('Exception: ', '');
+      // Network / cold-start errors → friendlier wording
+      final isNetwork = msg.contains('fetch') ||
+          msg.contains('просыпается') ||
+          msg.contains('SocketException') ||
+          msg.contains('timeout') ||
+          msg.contains('TimeoutException');
+      setState(() => _error = isNetwork
+          ? '⏳ Сервер просыпается — подождите 10 сек и попробуйте снова'
+          : msg);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -635,32 +644,7 @@ class _AuthScreenState extends State<AuthScreen>
             // Inline error
             if (_error != null) ...[
               const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF2F2),
-                  borderRadius: BorderRadius.circular(10),
-                  border:
-                      Border.all(color: const Color(0xFFFECACA)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.error_outline,
-                        size: 16, color: Color(0xFFDC2626)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _error!,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFFDC2626),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _ErrorBanner(message: _error!),
             ],
 
             const SizedBox(height: 20),
@@ -819,21 +803,7 @@ class _AuthScreenState extends State<AuthScreen>
 
             if (_error != null) ...[
               const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF2F2),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFFECACA)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.error_outline, size: 16, color: Color(0xFFDC2626)),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(_error!, style: const TextStyle(fontSize: 13, color: Color(0xFFDC2626)))),
-                  ],
-                ),
-              ),
+              _ErrorBanner(message: _error!),
             ],
 
             const SizedBox(height: 24),
@@ -1231,6 +1201,45 @@ class _LanguageSwitcher extends StatelessWidget {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Error banner — yellow for network/timeout, red for auth errors
+// ─────────────────────────────────────────────────────────────────────────────
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+  const _ErrorBanner({required this.message});
+
+  bool get _isNetwork => message.startsWith('⏳');
+
+  @override
+  Widget build(BuildContext context) {
+    final bg     = _isNetwork ? const Color(0xFFFFFBEB) : const Color(0xFFFEF2F2);
+    final border = _isNetwork ? const Color(0xFFFDE68A) : const Color(0xFFFECACA);
+    final color  = _isNetwork ? const Color(0xFFB45309) : const Color(0xFFDC2626);
+    final icon   = _isNetwork ? Icons.hourglass_top_rounded : Icons.error_outline;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(fontSize: 13, color: color),
+            ),
+          ),
         ],
       ),
     );

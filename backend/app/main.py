@@ -59,3 +59,8 @@ def admin_panel():
 @app.get("/")
 def root():
     return {"status": "ok", "message": "Intern KZ API is running"}
+
+
+@app.get("/health")
+def health():
+    return {"ok": True}

@@ -94,7 +94,13 @@ class UniversityAnalytics {
   final int accepted;
   final int rejected;
   final int pending;
+  final int reviewed;
+  final int interview;
+  final int offer;
   final double acceptanceRate;
+  final double employmentRate;
+  final int studentsEmployed;
+  final int studentsNoApps;
   final List<Map<String, dynamic>> byCategory;
   final List<Map<String, dynamic>> topCompanies;
 
@@ -104,7 +110,13 @@ class UniversityAnalytics {
     required this.accepted,
     required this.rejected,
     required this.pending,
+    required this.reviewed,
+    required this.interview,
+    required this.offer,
     required this.acceptanceRate,
+    required this.employmentRate,
+    required this.studentsEmployed,
+    required this.studentsNoApps,
     required this.byCategory,
     required this.topCompanies,
   });
@@ -116,7 +128,13 @@ class UniversityAnalytics {
         accepted: j['accepted'],
         rejected: j['rejected'],
         pending: j['pending'],
+        reviewed: j['reviewed'] ?? 0,
+        interview: j['interview'] ?? 0,
+        offer: j['offer'] ?? 0,
         acceptanceRate: (j['acceptance_rate'] as num).toDouble(),
+        employmentRate: (j['employment_rate'] as num?)?.toDouble() ?? 0.0,
+        studentsEmployed: j['students_employed'] ?? 0,
+        studentsNoApps: j['students_no_apps'] ?? 0,
         byCategory: List<Map<String, dynamic>>.from(j['by_category']),
         topCompanies: List<Map<String, dynamic>>.from(j['top_companies']),
       );

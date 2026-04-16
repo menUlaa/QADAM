@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:internship_app2/l10n/strings.dart';
 import 'package:internship_app2/models/internship.dart';
+import 'package:internship_app2/screens/ai_chat_screen.dart';
 import 'package:internship_app2/services/api_service.dart';
 
 const _categoryColors = {
@@ -427,6 +428,11 @@ class _DetailsScreenState extends State<DetailsScreen> {
 
           const SizedBox(height: 12),
 
+          // ── AI Preparation ───────────────────────────────────────────────
+          _AiPreparationSection(internship: it),
+
+          const SizedBox(height: 12),
+
           // ── Contact ──────────────────────────────────────────────────────
           _section(
             tr('contact'),
@@ -484,6 +490,171 @@ class _DetailsScreenState extends State<DetailsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── AI Preparation Section ─────────────────────────────────────────────────────
+
+class _AiPreparationSection extends StatelessWidget {
+  final Internship internship;
+  const _AiPreparationSection({required this.internship});
+
+  void _open(BuildContext context, AiChatMode mode) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => AiChatScreen(
+        mode: mode,
+        internshipId: internship.id,
+        internshipTitle: internship.title,
+        companyName: internship.company,
+      ),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1E3A8A), Color(0xFF2164F3)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2164F3).withValues(alpha: 0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.auto_awesome_rounded,
+                    color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('AI Подготовка',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800)),
+                    Text('Готов к этой стажировке?',
+                        style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12)),
+                  ],
+                ),
+              ),
+              if (internship.matchScore != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${internship.matchScore}% match',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _AiActionButton(
+            icon: Icons.description_outlined,
+            title: 'Сопроводительное письмо',
+            subtitle: 'AI напишет письмо под эту вакансию',
+            onTap: () => _open(context, AiChatMode.coverLetter),
+          ),
+          const SizedBox(height: 8),
+          _AiActionButton(
+            icon: Icons.record_voice_over_outlined,
+            title: 'Подготовка к собеседованию',
+            subtitle: 'Топ вопросов + советы для этой компании',
+            onTap: () => _open(context, AiChatMode.interviewPrep),
+          ),
+          const SizedBox(height: 8),
+          _AiActionButton(
+            icon: Icons.analytics_outlined,
+            title: 'Анализ навыков',
+            subtitle: 'Что прокачать перед откликом',
+            onTap: () => _open(context, AiChatMode.skillGap),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AiActionButton extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _AiActionButton({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700)),
+                  Text(subtitle,
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 11)),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded,
+                color: Colors.white54, size: 14),
+          ],
+        ),
       ),
     );
   }

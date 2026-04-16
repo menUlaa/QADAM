@@ -16,6 +16,7 @@ class Internship {
   final List<String> tags;
   final String category;
   final DateTime? createdAt;
+  final int? matchScore; // 60–100 personalised match, null if not logged in
 
   const Internship({
     required this.id,
@@ -34,6 +35,7 @@ class Internship {
     required this.tags,
     this.category = 'IT',
     this.createdAt,
+    this.matchScore,
   });
 
   /// Create Internship from JSON (API response)
@@ -69,6 +71,7 @@ class Internship {
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
           : null,
+      matchScore: json['match_score'] as int?,
     );
   }
 

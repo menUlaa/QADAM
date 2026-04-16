@@ -141,19 +141,59 @@ class ApiService {
     throw Exception(json.decode(resp.body)['detail'] ?? 'Upload failed');
   }
 
-  /// AI chat
-  Future<String> aiChat(List<Map<String, String>> messages) async {
+  /// AI chat — returns reply and conversation_id
+  Future<Map<String, dynamic>> aiChat(
+    List<Map<String, String>> messages, {
+    int? conversationId,
+  }) async {
     final headers = await _getHeaders();
+    final body = <String, dynamic>{'messages': messages};
+    if (conversationId != null) body['conversation_id'] = conversationId;
     final response = await http.post(
       Uri.parse('$baseUrl/ai/chat'),
       headers: headers,
-      body: json.encode({'messages': messages}),
+      body: json.encode(body),
     );
     if (response.statusCode == 200) {
-      return json.decode(response.body)['reply'] as String;
+      return json.decode(response.body) as Map<String, dynamic>;
     }
     final err = json.decode(response.body);
     throw Exception(err['detail'] ?? 'AI error');
+  }
+
+  /// List all AI conversations for current user
+  Future<List<Map<String, dynamic>>> getAiConversations() async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/ai/conversations'),
+      headers: headers,
+    );
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(json.decode(response.body));
+    }
+    return [];
+  }
+
+  /// Get messages for a specific conversation
+  Future<Map<String, dynamic>> getAiConversation(int conversationId) async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/ai/conversations/$conversationId'),
+      headers: headers,
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    }
+    throw Exception('Conversation not found');
+  }
+
+  /// Delete an AI conversation
+  Future<void> deleteAiConversation(int conversationId) async {
+    final headers = await _getHeaders();
+    await http.delete(
+      Uri.parse('$baseUrl/ai/conversations/$conversationId'),
+      headers: headers,
+    );
   }
 
   // ── Company methods ──────────────────────────────────────────────────────
@@ -233,6 +273,15 @@ class ApiService {
     throw Exception('Failed to load stats');
   }
 
+  Future<Map<String, dynamic>> scoreCandidateWithAi(String token, int appId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/company/applications/$appId/ai-score'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+    );
+    if (response.statusCode == 200) return json.decode(response.body);
+    throw Exception(json.decode(response.body)['detail'] ?? 'AI scoring failed');
+  }
+
   /// Get list of companies
   Future<List<Map<String, dynamic>>> getCompanies() async {
     final headers = await _getHeaders();
@@ -286,6 +335,32 @@ class ApiService {
     }
   }
 
+  /// Get list of all skills from backend (no auth required)
+  Future<List<Map<String, dynamic>>> getSkills() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/internships/meta/skills'),
+      headers: {'Content-Type': 'application/json'},
+    );
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(json.decode(response.body));
+    }
+    return [];
+  }
+
+  /// Update user profile fields (partial update — only non-null fields sent)
+  Future<void> updateProfile(Map<String, dynamic> fields) async {
+    final headers = await _getHeaders();
+    final response = await http.put(
+      Uri.parse('$baseUrl/auth/profile'),
+      headers: headers,
+      body: json.encode(fields),
+    );
+    if (response.statusCode != 200) {
+      final err = json.decode(response.body);
+      throw Exception(err['detail'] ?? 'Failed to update profile');
+    }
+  }
+
   /// Test connection to backend
   Future<bool> testConnection() async {
     try {
@@ -294,5 +369,66 @@ class ApiService {
     } catch (e) {
       return false;
     }
+  }
+
+  // ── Contextual AI methods ────────────────────────────────────────────────
+
+  /// Generate a personalised cover letter for an internship
+  Future<Map<String, dynamic>> generateCoverLetter(int internshipId) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/ai/cover-letter'),
+      headers: headers,
+      body: json.encode({'internship_id': internshipId}),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    }
+    final err = json.decode(response.body);
+    throw Exception(err['detail'] ?? 'Failed to generate cover letter');
+  }
+
+  /// Generate interview preparation guide for an internship
+  Future<Map<String, dynamic>> generateInterviewPrep(int internshipId) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/ai/interview-prep'),
+      headers: headers,
+      body: json.encode({'internship_id': internshipId}),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    }
+    final err = json.decode(response.body);
+    throw Exception(err['detail'] ?? 'Failed to generate interview prep');
+  }
+
+  /// Analyze skill gap between user profile and an internship
+  Future<Map<String, dynamic>> analyzeSkillGap(int internshipId) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/ai/skill-gap'),
+      headers: headers,
+      body: json.encode({'internship_id': internshipId}),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    }
+    final err = json.decode(response.body);
+    throw Exception(err['detail'] ?? 'Failed to analyze skill gap');
+  }
+
+  /// Get AI analysis + completion score for current user's profile
+  Future<Map<String, dynamic>> getProfileAnalysis() async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/ai/profile-analysis'),
+      headers: headers,
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    }
+    final err = json.decode(response.body);
+    throw Exception(err['detail'] ?? 'Failed to analyse profile');
   }
 }

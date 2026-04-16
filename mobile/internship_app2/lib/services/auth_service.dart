@@ -235,6 +235,12 @@ class AuthService {
     }
   }
 
+  /// Ping the backend so it wakes up from Render free-tier sleep.
+  /// Errors are silently ignored — this is best-effort only.
+  void warmup() {
+    http.get(Uri.parse('$baseUrl/health')).catchError((_) => http.Response('', 0));
+  }
+
   /// Logout (clear saved data)
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();

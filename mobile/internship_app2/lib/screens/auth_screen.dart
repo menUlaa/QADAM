@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:internship_app2/l10n/strings.dart';
 import 'package:internship_app2/screens/role_selection_screen.dart';
@@ -21,6 +22,8 @@ class _AuthScreenState extends State<AuthScreen>
     with SingleTickerProviderStateMixin {
   bool _isLogin = true;
   bool _loading = false;
+  bool _isGraduate = false;
+  bool _loadingHintVisible = false;
   bool _googleLoading = false;
   bool _obscurePass = true;
   bool _obscureConfirm = true;
@@ -59,6 +62,8 @@ class _AuthScreenState extends State<AuthScreen>
       begin: const Offset(0, 0.06),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut));
+    // Wake up the backend in the background so it's ready when the user logs in
+    _authService.warmup();
   }
 
   @override
@@ -143,6 +148,11 @@ class _AuthScreenState extends State<AuthScreen>
 
     setState(() { _loading = true; _error = null; });
 
+    // Show a hint after 4 s if the server is still waking up
+    final hintTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted && _loading) setState(() => _loadingHintVisible = true);
+    });
+
     try {
       if (_isLogin) {
         await _authService.login(email: email, password: pass);
@@ -155,7 +165,7 @@ class _AuthScreenState extends State<AuthScreen>
           lastName: _lastName.text.trim(),
           password: pass,
           confirmPassword: _confirmPass.text,
-          isGraduate: widget.role == UserRole.graduate,
+          isGraduate: _isGraduate,
           universityName: _selectedUniversity,
           specialty: _selectedSpecialty,
         );
@@ -179,7 +189,8 @@ class _AuthScreenState extends State<AuthScreen>
           ? '⏳ Сервер просыпается — подождите 10 сек и попробуйте снова'
           : msg);
     } finally {
-      if (mounted) setState(() => _loading = false);
+      hintTimer.cancel();
+      if (mounted) setState(() { _loading = false; _loadingHintVisible = false; });
     }
   }
 
@@ -546,7 +557,7 @@ class _AuthScreenState extends State<AuthScreen>
             ),
             const SizedBox(height: 12),
             // Role badge
-            _RoleBadge(role: widget.role),
+            _RoleBadge(role: _isGraduate ? UserRole.graduate : widget.role),
             const SizedBox(height: 20),
 
             // Fields
@@ -676,6 +687,15 @@ class _AuthScreenState extends State<AuthScreen>
                       ),
               ),
             ),
+            if (_loadingHintVisible)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(
+                  '⏳ Сервер просыпается, подождите...',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                ),
+              ),
 
             const SizedBox(height: 20),
 
@@ -794,6 +814,64 @@ class _AuthScreenState extends State<AuthScreen>
               onChanged: (v) => setState(() => _selectedSpecialty = v),
             ),
 
+            const SizedBox(height: 16),
+
+            // Graduate toggle
+            GestureDetector(
+              onTap: () => setState(() => _isGraduate = !_isGraduate),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: _isGraduate
+                      ? const Color(0xFFECFDF5)
+                      : const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: _isGraduate
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFFE5E7EB),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _isGraduate
+                          ? Icons.check_circle_rounded
+                          : Icons.circle_outlined,
+                      size: 20,
+                      color: _isGraduate
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFF9CA3AF),
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Я уже выпускник',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF111827),
+                            ),
+                          ),
+                          Text(
+                            'Окончил университет, ищу работу',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
             const SizedBox(height: 8),
             const Text(
               'Можно пропустить и заполнить позже в профиле',
@@ -822,6 +900,15 @@ class _AuthScreenState extends State<AuthScreen>
                     : const Text('Завершить регистрацию', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
               ),
             ),
+            if (_loadingHintVisible)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(
+                  '⏳ Сервер просыпается, подождите...',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                ),
+              ),
           ],
         ),
       ),

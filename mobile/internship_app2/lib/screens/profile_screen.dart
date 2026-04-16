@@ -1,8 +1,10 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:internship_app2/models/user.dart';
+import 'package:internship_app2/screens/ai_chat_screen.dart';
 import 'package:internship_app2/services/api_service.dart';
 import 'package:internship_app2/services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,6 +59,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _load() async {
     final user = await _auth.getSavedUser();
     if (mounted) setState(() => _user = user);
+
+    // Apply skills selected during onboarding (if user has none yet)
+    if (user != null && user.skills.isEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      final pending = prefs.getStringList('pending_skills');
+      if (pending != null && pending.isNotEmpty) {
+        try {
+          final updated = await _auth.updateProfile(skills: pending);
+          await prefs.remove('pending_skills');
+          if (mounted) setState(() => _user = updated);
+        } catch (_) {}
+      }
+    }
+
     try {
       final apps = await _api.getMyApplications();
       if (mounted) setState(() { _applications = apps; _loadingApps = false; });
@@ -178,6 +194,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             if (_user != null && _completeness < 1.0)
               const SizedBox(height: 12),
+            if (_user != null)
+              _AiProfileCard(api: _api),
+            const SizedBox(height: 12),
             _StatsRow(
               total: _applications.length,
               accepted: _acceptedCount,
@@ -1202,6 +1221,7 @@ class _ApplicationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = app['status'] as String? ?? 'pending';
+    final hasReport = app['has_report'] as bool? ?? false;
     final title = app['internship_title'] as String? ?? '—';
     final company = app['company'] as String? ?? '—';
     final createdAt = app['created_at'] as String?;
@@ -1314,29 +1334,50 @@ class _ApplicationCard extends StatelessWidget {
                               fontSize: 12, color: _text2)),
                       const Spacer(),
                       if (status == 'accepted')
-                        GestureDetector(
-                          onTap: () => onReport(app),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEBF0FA),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Row(
-                              children: [
-                                Icon(Icons.edit_note_rounded,
-                                    size: 14, color: _blue),
-                                SizedBox(width: 4),
-                                Text('Отчёт',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: _blue)),
-                              ],
-                            ),
-                          ),
-                        ),
+                        hasReport
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD1FAE5),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(Icons.check_circle_rounded,
+                                        size: 14, color: _green),
+                                    SizedBox(width: 4),
+                                    Text('Отчёт сдан',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: _green)),
+                                  ],
+                                ),
+                              )
+                            : GestureDetector(
+                                onTap: () => onReport(app),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEBF0FA),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.edit_note_rounded,
+                                          size: 14, color: _blue),
+                                      SizedBox(width: 4),
+                                      Text('Сдать отчёт',
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: _blue)),
+                                    ],
+                                  ),
+                                ),
+                              ),
                     ],
                   ),
                 ],
@@ -2218,4 +2259,210 @@ class _ReportSheetState extends State<_ReportSheet> {
       ),
     );
   }
+}
+
+// ── AI Profile Card ────────────────────────────────────────────────────────────
+
+class _AiProfileCard extends StatefulWidget {
+  final ApiService api;
+  const _AiProfileCard({required this.api});
+
+  @override
+  State<_AiProfileCard> createState() => _AiProfileCardState();
+}
+
+class _AiProfileCardState extends State<_AiProfileCard> {
+  bool _loading = false;
+  Map<String, dynamic>? _result;
+  String? _error;
+
+  Future<void> _analyze() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final r = await widget.api.getProfileAnalysis();
+      if (mounted) { setState(() { _result = r; _loading = false; }); }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceAll('Exception: ', '');
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final score = _result?['score'] as int?;
+    final analysis = _result?['analysis'] as String?;
+    final missing = (_result?['missing_fields'] as List?)?.cast<String>() ?? [];
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4C1D95), Color(0xFF6D28D9)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6D28D9).withValues(alpha: 0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.auto_awesome_rounded,
+                    color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('AI Анализ профиля',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800)),
+                    Text('Как усилить профиль для работодателя',
+                        style: TextStyle(color: Colors.white70, fontSize: 11)),
+                  ],
+                ),
+              ),
+              if (score != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text('$score%',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900)),
+                ),
+            ],
+          ),
+          if (score != null) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: score / 100,
+                backgroundColor: Colors.white.withValues(alpha: 0.2),
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                minHeight: 6,
+              ),
+            ),
+            if (missing.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Добавь: ${missing.map(_fieldName).join(', ')}',
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ],
+          ],
+          if (analysis != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(analysis,
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 13, height: 1.5)),
+            ),
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const AiChatScreen(mode: AiChatMode.general),
+              )),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.chat_bubble_outline_rounded,
+                        color: Colors.white, size: 15),
+                    SizedBox(width: 6),
+                    Text('Обсудить с AI',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ),
+          ] else ...[
+            const SizedBox(height: 14),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(_error!,
+                    style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              ),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _loading ? null : _analyze,
+                icon: _loading
+                    ? const SizedBox(
+                        width: 14, height: 14,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.psychology_outlined,
+                        color: Colors.white, size: 18),
+                label: Text(
+                  _loading ? 'Анализирую...' : 'Проанализировать профиль',
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w700),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _fieldName(String key) => switch (key) {
+        'photo' => 'фото',
+        'university' => 'университет',
+        'specialty' => 'специальность',
+        'skills' => 'навыки',
+        'bio' => 'о себе',
+        'cv' => 'CV',
+        _ => key,
+      };
 }

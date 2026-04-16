@@ -6,7 +6,7 @@ from typing import Optional, List
 from app.db import get_db
 from app.auth import decode_access_token
 from app.users import get_user_by_id
-from app.models import Application, Internship
+from app.models import Application, Internship, InternshipReport
 
 router = APIRouter()
 security = HTTPBearer()
@@ -79,6 +79,7 @@ def my_applications(
             "message": app.message,
             "status": app.status,
             "created_at": app.created_at.isoformat(),
+            "has_report": app.report is not None,
         }
         for app in applications
     ]

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:internship_app2/l10n/strings.dart';
 import 'package:internship_app2/models/internship.dart';
+import 'package:internship_app2/screens/ai_chat_screen.dart';
 
 const _categoryColors = {
   'IT': Color(0xFF2164F3),
@@ -232,17 +233,28 @@ class InternshipCard extends StatelessWidget {
 
                 const SizedBox(height: 11),
 
-                // ── Job title ────────────────────────────────────────────
-                Text(
-                  internship.title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF111827),
-                    height: 1.3,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                // ── Job title + Match badge ───────────────────────────────
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        internship.title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827),
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (internship.matchScore != null) ...[
+                      const SizedBox(width: 8),
+                      _MatchBadge(score: internship.matchScore!),
+                    ],
+                  ],
                 ),
 
                 const SizedBox(height: 8),
@@ -311,6 +323,10 @@ class InternshipCard extends StatelessWidget {
                     ],
                   ),
                 ],
+
+                // ── Quick AI action ──────────────────────────────────────
+                const SizedBox(height: 10),
+                _QuickAiRow(internship: internship),
               ],         // Column.children
             ),           // Column
           ),             // content Padding
@@ -382,4 +398,121 @@ String _formatSalary(int salary) {
     return '${(salary / 1000).toStringAsFixed(salary % 1000 == 0 ? 0 : 1)}K';
   }
   return salary.toString();
+}
+
+// ── Match badge ────────────────────────────────────────────────────────────────
+
+class _MatchBadge extends StatelessWidget {
+  final int score;
+  const _MatchBadge({required this.score});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color;
+    if (score >= 85) {
+      color = const Color(0xFF10B981); // green
+    } else if (score >= 70) {
+      color = const Color(0xFFF59E0B); // amber
+    } else {
+      color = const Color(0xFF6B7280); // grey
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        '$score%',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Quick AI action row ────────────────────────────────────────────────────────
+
+class _QuickAiRow extends StatelessWidget {
+  final Internship internship;
+  const _QuickAiRow({required this.internship});
+
+  void _openAi(BuildContext context, AiChatMode mode) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => AiChatScreen(
+        mode: mode,
+        internshipId: internship.id,
+        internshipTitle: internship.title,
+        companyName: internship.company,
+      ),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _AiChip(
+          icon: Icons.description_outlined,
+          label: 'Cover letter',
+          onTap: () => _openAi(context, AiChatMode.coverLetter),
+        ),
+        const SizedBox(width: 6),
+        _AiChip(
+          icon: Icons.question_answer_outlined,
+          label: 'Собеседование',
+          onTap: () => _openAi(context, AiChatMode.interviewPrep),
+        ),
+        const SizedBox(width: 6),
+        _AiChip(
+          icon: Icons.auto_awesome_outlined,
+          label: 'Навыки',
+          onTap: () => _openAi(context, AiChatMode.skillGap),
+        ),
+      ],
+    );
+  }
+}
+
+class _AiChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _AiChip({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEFF6FF),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: const Color(0xFFBFDBFE)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 11, color: const Color(0xFF2164F3)),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF2164F3),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

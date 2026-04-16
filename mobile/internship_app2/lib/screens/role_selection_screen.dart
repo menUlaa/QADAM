@@ -162,21 +162,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                         _RoleCard(
                           role: UserRole.student,
                           icon: Icons.school_rounded,
-                          title: 'Студент',
-                          subtitle: 'Ищу стажировку во время учёбы',
+                          title: 'Студент / Выпускник',
+                          subtitle: 'Ищу стажировку или работу',
                           color: const Color(0xFF3B82F6),
                           isSelected: _selected == UserRole.student,
                           onTap: () => _onSelect(UserRole.student),
-                        ),
-                        const SizedBox(height: 12),
-                        _RoleCard(
-                          role: UserRole.graduate,
-                          icon: Icons.workspace_premium_rounded,
-                          title: 'Выпускник',
-                          subtitle: 'Окончил университет, ищу работу',
-                          color: const Color(0xFF10B981),
-                          isSelected: _selected == UserRole.graduate,
-                          onTap: () => _onSelect(UserRole.graduate),
                         ),
                         const SizedBox(height: 12),
                         _RoleCard(

@@ -244,6 +244,14 @@ def analytics(
     accepted = status_counts.get("accepted", 0)
     acceptance_rate = round(accepted / total_apps * 100, 1) if total_apps else 0.0
 
+    # Employment rate: students with at least 1 accepted application
+    user_apps: dict = defaultdict(list)
+    for a in apps:
+        user_apps[a.user_id].append(a.status)
+    students_employed = sum(1 for statuses in user_apps.values() if "accepted" in statuses)
+    students_no_apps = sum(1 for uid in user_ids if uid not in user_apps)
+    employment_rate = round(students_employed / total_students * 100, 1) if total_students else 0.0
+
     top_companies = sorted(
         [{"company": k, "count": v} for k, v in company_counts.items()],
         key=lambda x: x["count"],
@@ -256,7 +264,13 @@ def analytics(
         "accepted": accepted,
         "rejected": status_counts.get("rejected", 0),
         "pending": status_counts.get("pending", 0),
+        "reviewed": status_counts.get("reviewed", 0),
+        "interview": status_counts.get("interview", 0),
+        "offer": status_counts.get("offer", 0),
         "acceptance_rate": acceptance_rate,
+        "employment_rate": employment_rate,
+        "students_employed": students_employed,
+        "students_no_apps": students_no_apps,
         "by_category": [{"category": k, "count": v} for k, v in category_counts.items()],
         "by_status": [{"status": k, "count": v} for k, v in status_counts.items()],
         "top_companies": top_companies,

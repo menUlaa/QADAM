@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:internship_app2/l10n/strings.dart';
+import 'package:internship_app2/screens/landing_screen.dart';
 import 'package:internship_app2/screens/main_screen.dart';
 import 'package:internship_app2/screens/onboarding_screen.dart';
-import 'package:internship_app2/screens/role_selection_screen.dart';
 import 'package:internship_app2/screens/splash_screen.dart';
 import 'package:internship_app2/services/auth_service.dart';
 import 'package:internship_app2/services/base_url.dart';
@@ -179,6 +179,6 @@ class _AppRootState extends State<AppRoot> {
 
     return _loggedIn!
         ? MainScreen(onLogout: _logout)
-        : RoleSelectionScreen(onStudentSuccess: _login);
+        : LandingScreen(onStudentSuccess: _login);
   }
 }

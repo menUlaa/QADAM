@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 from app.db import get_db
-from app.models import Internship, Skill, InternshipSkill, Company
+from app.models import Internship, Skill, InternshipSkill, Company, User, UserSkill
 from app.auth import decode_access_token
 
 router = APIRouter()
@@ -36,6 +36,7 @@ class InternshipResponse(BaseModel):
     is_active: bool = True
     deadline: Optional[datetime] = None
     created_at: Optional[datetime] = None
+    match_score: Optional[int] = None  # 60–100 personalised match, null if not logged in
 
     class Config:
         from_attributes = True
@@ -83,6 +84,43 @@ def _base_q(db: Session):
     )
 
 
+def _calculate_match(user_skill_names: set, internship_dict: dict) -> int:
+    """Calculate match % between user skills and internship requirements.
+    Returns 60–100 range so even unmatched internships feel approachable."""
+    required = set(s.lower() for s in internship_dict.get("skills", []))
+    if not required:
+        return 70  # no requirements = open to all
+    user = set(s.lower() for s in user_skill_names)
+    overlap = len(required & user)
+    raw = overlap / len(required)
+    # Scale to 60–100 range
+    return min(100, int(60 + raw * 40))
+
+
+def _get_user_skills(credentials, db: Session) -> set:
+    """Extract user's skill names from token. Returns empty set if not auth."""
+    if not credentials:
+        return set()
+    payload = decode_access_token(credentials.credentials)
+    if not payload:
+        return set()
+    user_id = payload.get("user_id")
+    if not user_id:
+        return set()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return set()
+        # Try UserSkill relation first, fall back to user.skills list
+        if hasattr(user, 'skill_links') and user.skill_links:
+            return {sl.skill.name for sl in user.skill_links if sl.skill}
+        if hasattr(user, 'skills') and user.skills:
+            return set(user.skills)
+    except Exception:
+        pass
+    return set()
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # GET /internships/  — with filters
 # ─────────────────────────────────────────────────────────────────────────────
@@ -97,6 +135,7 @@ def list_internships(
     skill:     Optional[str]  = Query(default=None),
     search:    Optional[str]  = Query(default=None),
     is_active: Optional[bool] = Query(default=None),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: Session = Depends(get_db),
 ):
     q = _base_q(db)
@@ -123,7 +162,22 @@ def list_internships(
             Internship.company.ilike(t),
             Internship.description.ilike(t),
         ))
-    return [_to_dict(it) for it in q.order_by(Internship.id.desc()).offset(skip).limit(limit).all()]
+
+    internships = q.order_by(Internship.id.desc()).offset(skip).limit(limit).all()
+    user_skills = _get_user_skills(credentials, db)
+    has_skills = bool(user_skills)
+
+    result = []
+    for it in internships:
+        d = _to_dict(it)
+        d["match_score"] = _calculate_match(user_skills, d) if has_skills else None
+        result.append(d)
+
+    # Sort by match_score desc when user is logged in (best matches first)
+    if has_skills:
+        result.sort(key=lambda x: x.get("match_score") or 0, reverse=True)
+
+    return result
 
 
 # ─────────────────────────────────────────────────────────────────────────────

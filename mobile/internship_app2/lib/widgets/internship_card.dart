@@ -4,49 +4,35 @@ import 'package:internship_app2/models/internship.dart';
 import 'package:internship_app2/screens/ai_chat_screen.dart';
 
 const _categoryColors = {
-  'IT': Color(0xFF2164F3),
-  'Финансы': Color(0xFF047857),
-  'Дизайн': Color(0xFFB45309),
+  'IT':        Color(0xFF2164F3),
+  'Финансы':   Color(0xFF047857),
+  'Дизайн':    Color(0xFF7C3AED),
   'Маркетинг': Color(0xFFDC2626),
-  'HR': Color(0xFF7C3AED),
+  'HR':        Color(0xFFD97706),
 };
 
-Color _colorFor(String category) =>
-    _categoryColors[category] ?? const Color(0xFF2164F3);
+Color _colorFor(String cat) => _categoryColors[cat] ?? const Color(0xFF2164F3);
 
 String _timeAgo(DateTime? dt) {
   if (dt == null) return '';
   final diff = DateTime.now().difference(dt);
   final lang = localeNotifier.value;
-  if (diff.inDays == 0) {
-    return lang == 'en' ? 'Today' : lang == 'kz' ? 'Бүгін' : 'Сегодня';
-  }
+  if (diff.inDays == 0) return lang == 'en' ? 'Today' : 'Сегодня';
   if (diff.inDays < 7) {
     final d = diff.inDays;
-    return lang == 'en'
-        ? '${d}d ago'
-        : lang == 'kz'
-            ? '$d күн бұрын'
-            : '$d дн. назад';
+    return lang == 'en' ? '${d}d ago' : '$d дн. назад';
   }
   if (diff.inDays < 30) {
     final w = (diff.inDays / 7).floor();
-    return lang == 'en'
-        ? '${w}w ago'
-        : lang == 'kz'
-            ? '$w апта бұрын'
-            : '$w нед. назад';
+    return lang == 'en' ? '${w}w ago' : '$w нед. назад';
   }
   final m = (diff.inDays / 30).floor();
-  return lang == 'en'
-      ? '${m}mo ago'
-      : lang == 'kz'
-          ? '$m ай бұрын'
-          : '$m мес. назад';
+  return lang == 'en' ? '${m}mo ago' : '$m мес. назад';
 }
 
-bool _isNew(DateTime? dt) =>
-    dt != null && DateTime.now().difference(dt).inDays < 3;
+bool _isNew(DateTime? dt) => dt != null && DateTime.now().difference(dt).inDays < 3;
+
+// ── Card ──────────────────────────────────────────────────────────────────────
 
 class InternshipCard extends StatelessWidget {
   final Internship internship;
@@ -80,61 +66,37 @@ class InternshipCard extends StatelessWidget {
         .toUpperCase();
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          hoverColor: Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          hoverColor: const Color(0x042164F3),
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x09000000),
-                  blurRadius: 12,
-                  offset: Offset(0, 2),
-                ),
-                BoxShadow(
-                  color: Color(0x05000000),
-                  blurRadius: 2,
-                  offset: Offset(0, 1),
-                ),
-              ],
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFE4E2E0)),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Stack(
-                children: [
-                  // Colored left stripe
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    child: Container(width: 4, color: accent),
-                  ),
-                  // Card content
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                // ── Header: avatar + company + bookmark ─────────────────
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
+                // ── Row 1: Logo + Company + Bookmark ────────────────────────
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Company logo avatar
+                    // Company logo
                     Container(
-                      width: 46,
-                      height: 46,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.08),
+                        color: accent.withValues(alpha: 0.07),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: accent.withValues(alpha: 0.18)),
+                        border: Border.all(color: const Color(0xFFE4E2E0)),
                       ),
                       child: Center(
                         child: Text(
@@ -147,7 +109,8 @@ class InternshipCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
+
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,9 +118,9 @@ class InternshipCard extends StatelessWidget {
                           Text(
                             internship.company,
                             style: const TextStyle(
-                              fontSize: 13,
+                              fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF374151),
+                              color: Color(0xFF2557A7), // Indeed-style blue company name
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -165,38 +128,16 @@ class InternshipCard extends StatelessWidget {
                           const SizedBox(height: 2),
                           Row(
                             children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 7, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: accent.withValues(alpha: 0.08),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  internship.category,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: accent,
-                                  ),
-                                ),
-                              ),
-                              if (isNewPost) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 7, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFD1FAE5),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
+                              if (internship.city.isNotEmpty) ...[
+                                const Icon(Icons.location_on_outlined,
+                                    size: 12, color: Color(0xFF767676)),
+                                const SizedBox(width: 3),
+                                Flexible(
                                   child: Text(
-                                    tr('new_badge'),
+                                    internship.city,
                                     style: const TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF065F46),
-                                    ),
+                                        fontSize: 12, color: Color(0xFF767676)),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
@@ -205,35 +146,55 @@ class InternshipCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    // Bookmark
-                    if (onFavoriteToggle != null)
-                      GestureDetector(
-                        onTap: onFavoriteToggle,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 4),
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            transitionBuilder: (child, anim) =>
-                                ScaleTransition(scale: anim, child: child),
-                            child: Icon(
-                              isFavorite
-                                  ? Icons.bookmark_rounded
-                                  : Icons.bookmark_outline_rounded,
-                              key: ValueKey(isFavorite),
-                              size: 22,
-                              color: isFavorite
-                                  ? const Color(0xFF2164F3)
-                                  : const Color(0xFF9CA3AF),
+
+                    // Badges + bookmark
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: onFavoriteToggle,
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              transitionBuilder: (child, anim) =>
+                                  ScaleTransition(scale: anim, child: child),
+                              child: Icon(
+                                isFavorite
+                                    ? Icons.bookmark_rounded
+                                    : Icons.bookmark_outline_rounded,
+                                key: ValueKey(isFavorite),
+                                size: 22,
+                                color: isFavorite
+                                    ? const Color(0xFF2164F3)
+                                    : const Color(0xFFB8B8B8),
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                        if (isNewPost) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD1FAE5),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text('Новое',
+                                style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF065F46))),
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
 
-                const SizedBox(height: 11),
+                const SizedBox(height: 10),
 
-                // ── Job title + Match badge ───────────────────────────────
+                // ── Row 2: Title + Match ─────────────────────────────────────
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -241,10 +202,10 @@ class InternshipCard extends StatelessWidget {
                       child: Text(
                         internship.title,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 17,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF111827),
-                          height: 1.3,
+                          color: Color(0xFF1A1A1A),
+                          height: 1.25,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -257,137 +218,98 @@ class InternshipCard extends StatelessWidget {
                   ],
                 ),
 
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
 
-                // ── Meta chips ───────────────────────────────────────────
+                // ── Row 3: Format · Salary · Duration ────────────────────────
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
                   children: [
-                    if (internship.city.isNotEmpty)
-                      _metaChip(Icons.location_on_outlined,
-                          internship.city),
-                    _metaChip(Icons.work_outline_rounded, internship.format),
+                    _tag(internship.format, outlined: true),
                     if (internship.salaryKzt != null)
-                      _salaryChip(internship.salaryKzt!),
+                      _salaryTag(internship.salaryKzt!),
+                    if (!internship.paid)
+                      _tag('Волонтёрство', color: const Color(0xFF6B7280), outlined: true),
                     if (internship.duration.isNotEmpty)
-                      _metaChip(Icons.schedule_rounded, internship.duration),
+                      _tag(internship.duration, outlined: true),
                   ],
                 ),
 
-                // ── Tags + date ──────────────────────────────────────────
+                // ── Row 4: Hashtags + Date ───────────────────────────────────
                 if (tags.isNotEmpty || dateStr.isNotEmpty) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
                         child: Wrap(
-                          spacing: 5,
+                          spacing: 4,
                           runSpacing: 4,
-                          children: tags
-                              .map((tag) => GestureDetector(
-                                    onTap: onTagTap != null
-                                        ? () => onTagTap!(tag)
-                                        : null,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF3F4F6),
-                                        borderRadius:
-                                            BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        '#$tag',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w500,
-                                          color: onTagTap != null
-                                              ? const Color(0xFF2164F3)
-                                              : const Color(0xFF6B7280),
-                                        ),
-                                      ),
-                                    ),
-                                  ))
-                              .toList(),
+                          children: tags.map((tag) => MouseRegion(
+                            cursor: onTagTap != null ? SystemMouseCursors.click : MouseCursor.defer,
+                            child: GestureDetector(
+                              onTap: onTagTap != null ? () => onTagTap!(tag) : null,
+                              child: Text(
+                                '#$tag',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: onTagTap != null
+                                      ? const Color(0xFF2557A7)
+                                      : const Color(0xFF767676),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          )).toList(),
                         ),
                       ),
                       if (dateStr.isNotEmpty)
-                        Text(
-                          dateStr,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF9CA3AF),
-                          ),
-                        ),
+                        Text(dateStr,
+                            style: const TextStyle(
+                                fontSize: 11, color: Color(0xFF9CA3AF))),
                     ],
                   ),
                 ],
 
-                // ── Quick AI action ──────────────────────────────────────
+                // ── Row 5: AI quick actions ───────────────────────────────────
                 const SizedBox(height: 10),
+                const Divider(height: 1, color: Color(0xFFF0F0F0)),
+                const SizedBox(height: 8),
                 _QuickAiRow(internship: internship),
-              ],         // Column.children
-            ),           // Column
-          ),             // content Padding
-        ],               // Stack.children
-      ),                 // Stack
-    ),                   // ClipRRect
-  ),                     // Container
-),                       // InkWell
-  ),                     // Material
-);                       // outer Padding
-  }
-
-  Widget _metaChip(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: const Color(0xFF6B7280)),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF374151),
-              fontWeight: FontWeight.w500,
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _salaryChip(int salary) {
+  Widget _tag(String label, {Color? color, bool outlined = false}) {
+    final c = color ?? const Color(0xFF595959);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: outlined ? Colors.transparent : c.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: const Color(0xFFD1D5DB)),
+      ),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w600, color: c)),
+    );
+  }
+
+  Widget _salaryTag(int salary) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: const Color(0xFFF0FDF4),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(color: const Color(0xFFBBF7D0)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.payments_outlined,
-              size: 12, color: Color(0xFF15803D)),
-          const SizedBox(width: 4),
-          Text(
-            '${_formatSalary(salary)} ₸',
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF15803D),
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
+      child: Text(
+        '${_formatSalary(salary)} ₸/мес',
+        style: const TextStyle(
+            fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF15803D)),
       ),
     );
   }
@@ -400,7 +322,7 @@ String _formatSalary(int salary) {
   return salary.toString();
 }
 
-// ── Match badge ────────────────────────────────────────────────────────────────
+// ── Match badge ───────────────────────────────────────────────────────────────
 
 class _MatchBadge extends StatelessWidget {
   final int score;
@@ -408,35 +330,27 @@ class _MatchBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color;
-    if (score >= 85) {
-      color = const Color(0xFF10B981); // green
-    } else if (score >= 70) {
-      color = const Color(0xFFF59E0B); // amber
-    } else {
-      color = const Color(0xFF6B7280); // grey
-    }
+    final color = score >= 85
+        ? const Color(0xFF16A34A)
+        : score >= 70
+            ? const Color(0xFFD97706)
+            : const Color(0xFF9CA3AF);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
-      child: Text(
-        '$score%',
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          color: color,
-        ),
-      ),
+      child: Text('$score%',
+          style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w800, color: color)),
     );
   }
 }
 
-// ── Quick AI action row ────────────────────────────────────────────────────────
+// ── Quick AI row ──────────────────────────────────────────────────────────────
 
 class _QuickAiRow extends StatelessWidget {
   final Internship internship;
@@ -457,20 +371,19 @@ class _QuickAiRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
+        const Icon(Icons.auto_awesome_rounded, size: 12, color: Color(0xFF9CA3AF)),
+        const SizedBox(width: 6),
         _AiChip(
-          icon: Icons.description_outlined,
           label: 'Cover letter',
           onTap: () => _openAi(context, AiChatMode.coverLetter),
         ),
         const SizedBox(width: 6),
         _AiChip(
-          icon: Icons.question_answer_outlined,
           label: 'Собеседование',
           onTap: () => _openAi(context, AiChatMode.interviewPrep),
         ),
         const SizedBox(width: 6),
         _AiChip(
-          icon: Icons.auto_awesome_outlined,
           label: 'Навыки',
           onTap: () => _openAi(context, AiChatMode.skillGap),
         ),
@@ -480,37 +393,25 @@ class _QuickAiRow extends StatelessWidget {
 }
 
 class _AiChip extends StatelessWidget {
-  final IconData icon;
   final String label;
   final VoidCallback onTap;
-
-  const _AiChip({required this.icon, required this.label, required this.onTap});
+  const _AiChip({required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEFF6FF),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: const Color(0xFFBFDBFE)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 11, color: const Color(0xFF2164F3)),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF2164F3),
-              ),
-            ),
-          ],
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF2557A7),
+            decoration: TextDecoration.underline,
+            decorationColor: Color(0xFFBFDBFE),
+          ),
         ),
       ),
     );

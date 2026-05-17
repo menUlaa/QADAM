@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:internship_app2/l10n/strings.dart';
 import 'package:internship_app2/models/user.dart';
 import 'package:internship_app2/screens/ai_chat_screen.dart';
 import 'package:internship_app2/services/api_service.dart';
@@ -7,29 +8,22 @@ import 'package:internship_app2/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────────────────────
-const _blue = Color(0xFF2164F3);
-const _green = Color(0xFF10B981);
-const _amber = Color(0xFFF59E0B);
-const _red = Color(0xFFEF4444);
-const _surface = Color(0xFFF8FAFC);
-const _border = Color(0xFFE2E8F0);
-const _text1 = Color(0xFF0F172A);
-const _text2 = Color(0xFF64748B);
+// ── Tokens ────────────────────────────────────────────────────────────────────
+const _blue    = Color(0xFF2164F3);
+const _green   = Color(0xFF059669);
+const _red     = Color(0xFFEF4444);
+const _ink     = Color(0xFF111827);
+const _sub     = Color(0xFF6B7280);
+const _div     = Color(0xFFE5E7EB);
+const _surface = Color(0xFFF9FAFB);
 
 const _cardDeco = BoxDecoration(
   color: Colors.white,
-  borderRadius: BorderRadius.all(Radius.circular(16)),
-  boxShadow: [
-    BoxShadow(color: Color(0x0D000000), blurRadius: 12, offset: Offset(0, 4)),
-  ],
+  borderRadius: BorderRadius.all(Radius.circular(12)),
+  boxShadow: [BoxShadow(color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 2))],
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ProfileScreen
-// ─────────────────────────────────────────────────────────────────────────────
+// ── ProfileScreen ─────────────────────────────────────────────────────────────
 class ProfileScreen extends StatefulWidget {
   final VoidCallback onLogout;
   const ProfileScreen({super.key, required this.onLogout});
@@ -40,15 +34,13 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _auth = AuthService();
-  final _api = ApiService();
+  final _api  = ApiService();
 
   User? _user;
   List<Map<String, dynamic>> _applications = [];
   bool _loadingApps = true;
   bool _cvUploading = false;
-
-  // Application filter
-  String _appFilter = 'all'; // all | active | accepted
+  String _appFilter = 'all';
 
   @override
   void initState() {
@@ -60,7 +52,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = await _auth.getSavedUser();
     if (mounted) setState(() => _user = user);
 
-    // Apply skills selected during onboarding (if user has none yet)
     if (user != null && user.skills.isEmpty) {
       final prefs = await SharedPreferences.getInstance();
       final pending = prefs.getStringList('pending_skills');
@@ -86,7 +77,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     widget.onLogout();
   }
 
-  // ── CV upload ──────────────────────────────────────────────────────────────
   Future<void> _uploadCv() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -103,8 +93,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         cvFilename: data['cv_filename'],
         cvUploadedAt: data['cv_uploaded_at'],
       );
-      // Persist to SharedPrefs
-      await _auth.updateProfile(); // no-op ping to get fresh user from server
+      await _auth.updateProfile();
       setState(() => _user = updated);
       _showSnack('CV успешно загружен!', _green);
     } catch (e) {
@@ -125,7 +114,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ));
   }
 
-  // ── Profile completeness ──────────────────────────────────────────────────
+  // ── Completeness ──────────────────────────────────────────────────────────────
   double get _completeness {
     if (_user == null) return 0;
     final checks = [
@@ -150,103 +139,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ];
   }
 
-  // ── App stats ──────────────────────────────────────────────────────────────
+  String get _initials {
+    final name = _user?.name ?? '';
+    if (name.isEmpty) return '?';
+    return name.trim().split(' ')
+        .where((w) => w.isNotEmpty)
+        .map((w) => w[0])
+        .take(2)
+        .join()
+        .toUpperCase();
+  }
+
+  // ── App stats ─────────────────────────────────────────────────────────────────
   int get _acceptedCount =>
       _applications.where((a) => a['status'] == 'accepted').length;
-  int get _pendingCount =>
-      _applications.where((a) => a['status'] == 'pending').length;
 
   List<Map<String, dynamic>> get _filteredApps {
     return switch (_appFilter) {
-      'active' => _applications
-          .where((a) => a['status'] == 'pending')
-          .toList(),
-      'accepted' => _applications
-          .where((a) => a['status'] == 'accepted')
-          .toList(),
+      'active'   => _applications.where((a) => a['status'] == 'pending').toList(),
+      'accepted' => _applications.where((a) => a['status'] == 'accepted').toList(),
       _ => _applications,
     };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // BUILD
-  // ─────────────────────────────────────────────────────────────────────────
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _surface,
-      body: RefreshIndicator(
-        onRefresh: _load,
-        color: _blue,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            _IdentityCard(
-              user: _user,
-              onStatusToggle: _toggleStatus,
-              onEditProfile: _openEditSheet,
-            ),
-            const SizedBox(height: 12),
-            if (_user != null && _completeness < 1.0)
-              _CompletenessCard(
-                value: _completeness,
-                missing: _missingItems,
-              ),
-            if (_user != null && _completeness < 1.0)
-              const SizedBox(height: 12),
-            if (_user != null)
-              _AiProfileCard(api: _api),
-            const SizedBox(height: 12),
-            _StatsRow(
-              total: _applications.length,
-              accepted: _acceptedCount,
-              pending: _pendingCount,
-              openToWork: _user?.openToWork ?? true,
-            ),
-            const SizedBox(height: 12),
-            _SkillsCard(
-              skills: _user?.skills ?? [],
-              onSave: (skills) async {
-                final updated = await _auth.updateProfile(skills: skills);
-                if (mounted) setState(() => _user = updated);
-              },
-            ),
-            const SizedBox(height: 12),
-            _EducationCard(
-              universityName: _user?.universityName,
-              specialty: _user?.specialty,
-              studyYear: _user?.studyYear,
-              onEdit: () => _openEditSheet(tab: 1),
-            ),
-            const SizedBox(height: 12),
-            _CvCard(
-              cvUrl: _user?.cvUrl,
-              cvFilename: _user?.cvFilename,
-              cvUploadedAt: _user?.cvUploadedAt,
-              uploading: _cvUploading,
-              onUpload: _uploadCv,
-            ),
-            const SizedBox(height: 20),
-            _ApplicationsSection(
-              loading: _loadingApps,
-              apps: _filteredApps,
-              allApps: _applications,
-              filter: _appFilter,
-              onFilterChange: (f) => setState(() => _appFilter = f),
-              onReport: _openReportSheet,
-            ),
-            const SizedBox(height: 20),
-            _SettingsSection(onLogout: _logout),
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Actions
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Actions ───────────────────────────────────────────────────────────────────
   Future<void> _toggleStatus() async {
     if (_user == null) return;
     final updated = await _auth.updateProfile(openToWork: !_user!.openToWork);
@@ -267,6 +183,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _openSkillsSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SkillsSheet(
+        skills: _user?.skills ?? [],
+        onSave: (skills) async {
+          final updated = await _auth.updateProfile(skills: skills);
+          if (mounted) setState(() => _user = updated);
+        },
+      ),
+    );
+  }
+
   void _openReportSheet(Map<String, dynamic> app) {
     showModalBottomSheet(
       context: context,
@@ -278,577 +209,195 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-}
 
-// ─────────────────────────────────────────────────────────────────────────────
-// IDENTITY CARD
-// ─────────────────────────────────────────────────────────────────────────────
-class _IdentityCard extends StatelessWidget {
-  final User? user;
-  final VoidCallback onStatusToggle;
-  final void Function({int tab}) onEditProfile;
-
-  const _IdentityCard({
-    required this.user,
-    required this.onStatusToggle,
-    required this.onEditProfile,
-  });
-
+  // ── BUILD ─────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final name = user?.name ?? '';
-    final email = user?.email ?? '';
-    final initials = name.isNotEmpty
-        ? name.trim().split(' ').where((w) => w.isNotEmpty)
-            .map((w) => w[0]).take(2).join().toUpperCase()
-        : '?';
+    final w = MediaQuery.sizeOf(context).width;
+    final isDesktop = w > 720;
+    final hPad = isDesktop ? ((w - 700) / 2).clamp(0.0, double.infinity) : 0.0;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 2)),
-        ],
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 52, 20, 24),
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Avatar
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2164F3), Color(0xFF6C7DFF)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Center(
-                  child: Text(
-                    initials,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              // Name + status
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 4),
-                    Text(
-                      name.isEmpty ? 'Имя не указано' : name,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: _text1,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      email,
-                      style: const TextStyle(fontSize: 13, color: _text2),
-                    ),
-                    const SizedBox(height: 10),
-                    GestureDetector(
-                      onTap: onStatusToggle,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: (user?.openToWork ?? true)
-                              ? const Color(0xFFD1FAE5)
-                              : const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 7,
-                              height: 7,
-                              decoration: BoxDecoration(
-                                color: (user?.openToWork ?? true)
-                                    ? _green
-                                    : _text2,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              (user?.openToWork ?? true)
-                                  ? 'Open to internships'
-                                  : 'Not available',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: (user?.openToWork ?? true)
-                                    ? _green
-                                    : _text2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Edit button
-              GestureDetector(
-                onTap: () => onEditProfile(tab: 0),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: _surface,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: _border),
-                  ),
-                  child: const Icon(Icons.edit_outlined, size: 18, color: _text2),
-                ),
-              ),
-            ],
-          ),
-
-          // Bio
-          if ((user?.bio ?? '').isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _surface,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                user!.bio!,
-                style: const TextStyle(fontSize: 14, color: _text1, height: 1.5),
-              ),
-            ),
-          ] else ...[
-            const SizedBox(height: 16),
-            GestureDetector(
-              onTap: () => onEditProfile(tab: 0),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _border, style: BorderStyle.solid),
-                ),
-                child: const Text(
-                  '+ Добавь bio — работодатели читают его первым',
-                  style: TextStyle(fontSize: 13, color: _text2),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// COMPLETENESS CARD
-// ─────────────────────────────────────────────────────────────────────────────
-class _CompletenessCard extends StatelessWidget {
-  final double value;
-  final List<String> missing;
-
-  const _CompletenessCard({required this.value, required this.missing});
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = (value * 100).round();
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: _cardDeco,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: RefreshIndicator(
+        onRefresh: _load,
+        color: _blue,
+        child: ListView(
+          padding: EdgeInsets.symmetric(horizontal: hPad),
           children: [
-            Row(
-              children: [
-                const Icon(Icons.trending_up_rounded, size: 18, color: _blue),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Профиль заполнен на $pct%',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: _text1,
-                    ),
-                  ),
-                ),
-                Text('$pct%',
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: _blue)),
-              ],
-            ),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: value,
-                minHeight: 6,
-                backgroundColor: const Color(0xFFE2E8F0),
-                valueColor: const AlwaysStoppedAnimation(_blue),
-              ),
-            ),
-            if (missing.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text(
-                'Добавь: ${missing.join(', ')}',
-                style: const TextStyle(fontSize: 12, color: _text2),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STATS ROW
-// ─────────────────────────────────────────────────────────────────────────────
-class _StatsRow extends StatelessWidget {
-  final int total;
-  final int accepted;
-  final int pending;
-  final bool openToWork;
-
-  const _StatsRow({
-    required this.total,
-    required this.accepted,
-    required this.pending,
-    required this.openToWork,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          _StatTile(label: 'Откликов', value: '$total', color: _blue),
-          const SizedBox(width: 10),
-          _StatTile(label: 'Принято', value: '$accepted', color: _green),
-          const SizedBox(width: 10),
-          _StatTile(
-            label: 'Статус',
-            value: openToWork ? 'Открыт' : 'Закрыт',
-            color: openToWork ? _green : _text2,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-
-  const _StatTile({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: _cardDeco,
-        child: Column(
-          children: [
-            Text(value,
-                style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: color)),
-            const SizedBox(height: 2),
-            Text(label,
-                style: const TextStyle(fontSize: 11, color: _text2)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SKILLS CARD
-// ─────────────────────────────────────────────────────────────────────────────
-class _SkillsCard extends StatelessWidget {
-  final List<String> skills;
-  final Future<void> Function(List<String>) onSave;
-
-  const _SkillsCard({required this.skills, required this.onSave});
-
-  void _openEditSkills(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _SkillsSheet(skills: skills, onSave: onSave),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: _cardDeco,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.bolt_rounded, size: 18, color: _blue),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text('Навыки',
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: _text1)),
-                ),
-                GestureDetector(
-                  onTap: () => _openEditSkills(context),
-                  child: const Text('Изменить',
-                      style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: _blue)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (skills.isEmpty)
-              GestureDetector(
-                onTap: () => _openEditSkills(context),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: _surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _border),
-                  ),
-                  child: const Column(
-                    children: [
-                      Icon(Icons.bolt_outlined, size: 28, color: _text2),
-                      SizedBox(height: 6),
-                      Text('Нет навыков',
-                          style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: _text2)),
-                      SizedBox(height: 2),
-                      Text(
-                        'Работодатели фильтруют кандидатов по навыкам',
-                        style: TextStyle(fontSize: 12, color: _text2),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+            // ── Name + avatar ─────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ...skills.map((s) => _SkillChip(label: s)),
-                  GestureDetector(
-                    onTap: () => _openEditSkills(context),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEBF0FA),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: _blue.withValues(alpha: 0.3)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.add, size: 14, color: _blue),
-                          SizedBox(width: 4),
-                          Text('Добавить',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: _blue)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SkillChip extends StatelessWidget {
-  final String label;
-  const _SkillChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEBF0FA),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(label,
-          style: const TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w600, color: _blue)),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// EDUCATION CARD
-// ─────────────────────────────────────────────────────────────────────────────
-class _EducationCard extends StatelessWidget {
-  final String? universityName;
-  final String? specialty;
-  final int? studyYear;
-  final VoidCallback onEdit;
-
-  const _EducationCard({
-    required this.universityName,
-    required this.specialty,
-    required this.studyYear,
-    required this.onEdit,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hasData = (universityName ?? '').isNotEmpty;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: _cardDeco,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.school_outlined, size: 18, color: _blue),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text('Образование',
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: _text1)),
-                ),
-                GestureDetector(
-                  onTap: onEdit,
-                  child: const Text('Изменить',
-                      style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: _blue)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (!hasData)
-              GestureDetector(
-                onTap: onEdit,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: _surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _border),
-                  ),
-                  child: const Column(
-                    children: [
-                      Icon(Icons.school_outlined, size: 28, color: _text2),
-                      SizedBox(height: 6),
-                      Text('Добавь образование',
-                          style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: _text2)),
-                    ],
-                  ),
-                ),
-              )
-            else
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEBF0FA),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.account_balance_outlined,
-                        size: 22, color: _blue),
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          universityName!,
+                          _user?.name.isNotEmpty == true
+                              ? _user!.name
+                              : 'Имя не указано',
                           style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: _text1),
-                        ),
-                        if ((specialty ?? '').isNotEmpty)
-                          Text(
-                            specialty! +
-                                (studyYear != null
-                                    ? ' · $studyYear курс'
-                                    : ''),
-                            style: const TextStyle(
-                                fontSize: 13, color: _text2),
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            color: _ink,
+                            letterSpacing: -0.5,
                           ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.email_outlined, size: 14, color: _sub),
+                            const SizedBox(width: 6),
+                            Text(
+                              _user?.email ?? '',
+                              style: const TextStyle(fontSize: 13, color: _sub),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
+                  const SizedBox(width: 16),
+                  Column(
+                    children: [
+                      Container(
+                        width: 64, height: 64,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF374151),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            _initials,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      GestureDetector(
+                        onTap: _user != null ? () => _openEditSheet() : null,
+                        child: const Text(
+                          'Изменить',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _blue,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
+            ),
+
+            // ── Status banner ─────────────────────────────────────────────
+            _StatusBanner(
+              openToWork: _user?.openToWork ?? true,
+              onTap: _user != null ? _toggleStatus : null,
+            ),
+            const SizedBox(height: 12),
+            const Divider(height: 1, thickness: 1, color: _div),
+
+            // ── Completeness ──────────────────────────────────────────────
+            if (_user != null && _completeness < 1.0) ...[
+              _CompletenessBar(value: _completeness, missing: _missingItems),
+              const Divider(height: 1, thickness: 1, color: _div),
+            ],
+
+            // ── AI Анализ ─────────────────────────────────────────────────
+            if (_user != null) ...[
+              _AiProfileCard(api: _api),
+              const Divider(height: 1, thickness: 1, color: _div),
+            ],
+
+            // ── Резюме ────────────────────────────────────────────────────
+            _SectionHeader('Резюме'),
+            _CvRow(
+              cvUrl: _user?.cvUrl,
+              cvFilename: _user?.cvFilename,
+              cvUploadedAt: _user?.cvUploadedAt,
+              uploading: _cvUploading,
+              onUpload: _uploadCv,
+            ),
+            const Divider(height: 1, thickness: 1, color: _div),
+
+            // ── Профиль ───────────────────────────────────────────────────
+            _SectionHeader('Профиль'),
+            _ProfileRow(
+              icon: Icons.notes_rounded,
+              title: 'О себе',
+              subtitle: (_user?.bio ?? '').isNotEmpty
+                  ? _user!.bio!
+                  : 'Расскажи о себе — работодатели читают это первым',
+              dim: (_user?.bio ?? '').isEmpty,
+              onTap: () => _openEditSheet(),
+            ),
+            const Divider(height: 1, thickness: 1, indent: 54, color: _div),
+            _ProfileRow(
+              icon: Icons.bolt_rounded,
+              title: 'Навыки',
+              subtitle: _user?.skills.isNotEmpty == true
+                  ? _user!.skills.take(4).join(', ') +
+                    (_user!.skills.length > 4 ? '  +${_user!.skills.length - 4}' : '')
+                  : 'Добавить навыки — работодатели фильтруют по ним',
+              dim: _user?.skills.isEmpty != false,
+              onTap: () => _openSkillsSheet(),
+            ),
+            const Divider(height: 1, thickness: 1, indent: 54, color: _div),
+            _ProfileRow(
+              icon: Icons.school_outlined,
+              title: 'Образование',
+              subtitle: (_user?.universityName ?? '').isNotEmpty
+                  ? _user!.universityName! +
+                    ((_user?.specialty ?? '').isNotEmpty
+                        ? ' · ${_user!.specialty}'
+                        : '')
+                  : 'Добавить университет и специальность',
+              dim: (_user?.universityName ?? '').isEmpty,
+              onTap: () => _openEditSheet(tab: 1),
+            ),
+            const Divider(height: 1, thickness: 1, indent: 54, color: _div),
+            _ProfileRow(
+              icon: Icons.link_rounded,
+              title: 'Portfolio URL',
+              subtitle: (_user?.portfolioUrl ?? '').isNotEmpty
+                  ? _user!.portfolioUrl!
+                  : 'GitHub, Behance, Dribbble...',
+              dim: (_user?.portfolioUrl ?? '').isEmpty,
+              onTap: () => _openEditSheet(),
+            ),
+            const Divider(height: 1, thickness: 1, color: _div),
+
+            // ── Stats ─────────────────────────────────────────────────────
+            _StatsBar(
+              total: _applications.length,
+              accepted: _acceptedCount,
+              openToWork: _user?.openToWork ?? true,
+            ),
+            const Divider(height: 1, thickness: 1, color: _div),
+
+            // ── Applications ──────────────────────────────────────────────
+            _ApplicationsSection(
+              loading: _loadingApps,
+              apps: _filteredApps,
+              allApps: _applications,
+              filter: _appFilter,
+              onFilterChange: (f) => setState(() => _appFilter = f),
+              onReport: _openReportSheet,
+            ),
+            const Divider(height: 1, thickness: 1, color: _div),
+
+            // ── Settings ──────────────────────────────────────────────────
+            _SettingsSection(onLogout: _logout),
+            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -856,17 +405,211 @@ class _EducationCard extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CV CARD
-// ─────────────────────────────────────────────────────────────────────────────
-class _CvCard extends StatelessWidget {
+// ── Status Banner ─────────────────────────────────────────────────────────────
+class _StatusBanner extends StatelessWidget {
+  final bool openToWork;
+  final VoidCallback? onTap;
+  const _StatusBanner({required this.openToWork, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final color  = openToWork ? const Color(0xFF059669) : const Color(0xFF6B7280);
+    final bg     = openToWork ? const Color(0xFFF0FDF4) : const Color(0xFFF9FAFB);
+    final border = openToWork ? const Color(0xFFBBF7D0) : const Color(0xFFE5E7EB);
+    final label  = openToWork
+        ? 'Работодатели могут вас найти'
+        : 'Скрыт от работодателей';
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: border),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.visibility_outlined, size: 16, color: color),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+            ),
+            Icon(
+              openToWork
+                  ? Icons.expand_more_rounded
+                  : Icons.chevron_right_rounded,
+              size: 18,
+              color: color,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Completeness Bar ──────────────────────────────────────────────────────────
+class _CompletenessBar extends StatelessWidget {
+  final double value;
+  final List<String> missing;
+  const _CompletenessBar({required this.value, required this.missing});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (value * 100).round();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.trending_up_rounded, size: 15, color: _blue),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Профиль заполнен на $pct%',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _ink,
+                  ),
+                ),
+              ),
+              Text(
+                '$pct%',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: _blue,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: value,
+              minHeight: 4,
+              backgroundColor: const Color(0xFFE5E7EB),
+              valueColor: const AlwaysStoppedAnimation(_blue),
+            ),
+          ),
+          if (missing.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Добавь: ${missing.join(', ')}',
+              style: const TextStyle(fontSize: 12, color: _sub),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Section Header ────────────────────────────────────────────────────────────
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  const _SectionHeader(this.title);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          color: _ink,
+          letterSpacing: -0.3,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Profile Row ───────────────────────────────────────────────────────────────
+class _ProfileRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool dim;
+  final VoidCallback onTap;
+
+  const _ProfileRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.dim = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: dim ? const Color(0xFFD1D5DB) : _blue),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: _ink,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: dim ? const Color(0xFFADB5BD) : _sub,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right, size: 18, color: _sub),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── CV Row ────────────────────────────────────────────────────────────────────
+class _CvRow extends StatelessWidget {
   final String? cvUrl;
   final String? cvFilename;
   final String? cvUploadedAt;
   final bool uploading;
   final VoidCallback onUpload;
 
-  const _CvCard({
+  const _CvRow({
     required this.cvUrl,
     required this.cvFilename,
     required this.cvUploadedAt,
@@ -874,192 +617,115 @@ class _CvCard extends StatelessWidget {
     required this.onUpload,
   });
 
-  String _formatDate(String? iso) {
+  String _fmt(String? iso) {
     if (iso == null) return '';
     try {
       final dt = DateTime.parse(iso);
-      final months = [
-        '', 'янв', 'фев', 'мар', 'апр', 'май', 'июн',
-        'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'
-      ];
-      return '${dt.day} ${months[dt.month]} ${dt.year}';
+      const m = ['', 'янв', 'фев', 'мар', 'апр', 'май', 'июн',
+          'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+      return '${dt.day} ${m[dt.month]} ${dt.year}';
     } catch (_) {
       return '';
     }
   }
 
-  bool get _isOld {
-    if (cvUploadedAt == null) return false;
-    try {
-      final dt = DateTime.parse(cvUploadedAt!);
-      return DateTime.now().difference(dt).inDays > 180;
-    } catch (_) {
-      return false;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final hasCv = cvUrl != null;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: _cardDeco,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.description_outlined, size: 18, color: _blue),
-                SizedBox(width: 8),
-                Text('Резюме (CV)',
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: _text1)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (!hasCv)
-              // ── Empty state — dashed border upload zone ──
-              GestureDetector(
-                onTap: uploading ? null : onUpload,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 28),
-                  decoration: BoxDecoration(
-                    color: _surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _border),
-                  ),
-                  child: uploading
-                      ? const Center(
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: _blue))
-                      : const Column(
-                          children: [
-                            Icon(Icons.upload_file_rounded,
-                                size: 36, color: _text2),
-                            SizedBox(height: 8),
-                            Text('Загрузить CV (PDF)',
-                                style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: _text1)),
-                            SizedBox(height: 2),
-                            Text('Максимум 5 МБ',
-                                style: TextStyle(
-                                    fontSize: 12, color: _text2)),
-                          ],
-                        ),
+    if (cvUrl == null) {
+      return InkWell(
+        onTap: uploading ? null : onUpload,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          child: Row(
+            children: [
+              const Icon(Icons.upload_file_rounded, size: 20, color: _blue),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Загрузить резюме',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: _ink)),
+                    SizedBox(height: 2),
+                    Text('PDF, максимум 5 МБ',
+                        style: TextStyle(fontSize: 13, color: _sub)),
+                  ],
                 ),
-              )
-            else ...[
-              // ── Uploaded state ──
-              if (_isOld)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEF3C7),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.warning_amber_rounded,
-                          size: 14, color: _amber),
-                      SizedBox(width: 6),
-                      Text('CV устарел — обновите резюме',
-                          style: TextStyle(fontSize: 12, color: _amber)),
-                    ],
-                  ),
-                ),
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD1FAE5),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.picture_as_pdf_rounded,
-                        color: _green, size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          cvFilename ?? 'resume.pdf',
-                          style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: _text1),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          'Загружен ${_formatDate(cvUploadedAt)}',
-                          style: const TextStyle(
-                              fontSize: 12, color: _text2),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
               ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        // cvUrl is a relative path like /uploads/xxx.pdf
-                        // Build full URL
-                        const base = 'https://qadam-backend.onrender.com';
-                        final url = Uri.parse('$base$cvUrl');
-                        if (await canLaunchUrl(url)) {
-                          await launchUrl(url,
-                              mode: LaunchMode.externalApplication);
-                        }
-                      },
-                      icon: const Icon(Icons.visibility_outlined, size: 16),
-                      label: const Text('Просмотр'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: _blue,
-                        side: const BorderSide(color: _border),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: uploading ? null : onUpload,
-                      icon: uploading
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.refresh_rounded, size: 16),
-                      label: const Text('Обновить'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _blue,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              uploading
+                  ? const SizedBox(
+                      width: 18, height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: _blue))
+                  : const Icon(Icons.add_circle_outline, size: 18, color: _blue),
             ],
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: _div),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              decoration: BoxDecoration(
+                color: _blue,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text('PDF',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    cvFilename ?? 'resume.pdf',
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _ink),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'Добавлен ${_fmt(cvUploadedAt)}',
+                    style: const TextStyle(fontSize: 12, color: _sub),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.visibility_outlined, size: 18, color: _sub),
+              onPressed: () async {
+                const base = 'https://qadam-backend.onrender.com';
+                final url = Uri.parse('$base$cvUrl');
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                }
+              },
+            ),
+            IconButton(
+              icon: uploading
+                  ? const SizedBox(
+                      width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: _blue))
+                  : const Icon(Icons.more_horiz, size: 20, color: _sub),
+              onPressed: uploading ? null : onUpload,
+            ),
           ],
         ),
       ),
@@ -1067,9 +733,67 @@ class _CvCard extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// APPLICATIONS SECTION
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Stats Bar ─────────────────────────────────────────────────────────────────
+class _StatsBar extends StatelessWidget {
+  final int total;
+  final int accepted;
+  final bool openToWork;
+
+  const _StatsBar({
+    required this.total,
+    required this.accepted,
+    required this.openToWork,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        children: [
+          _Stat(value: '$total', label: 'Откликов', color: _blue),
+          _vline(),
+          _Stat(value: '$accepted', label: 'Принято', color: _green),
+          _vline(),
+          _Stat(
+            value: openToWork ? 'Открыт' : 'Закрыт',
+            label: 'Статус',
+            color: openToWork ? _green : _sub,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _vline() => Container(
+    width: 1, height: 32,
+    margin: const EdgeInsets.symmetric(horizontal: 20),
+    color: _div,
+  );
+}
+
+class _Stat extends StatelessWidget {
+  final String value;
+  final String label;
+  final Color color;
+  const _Stat({required this.value, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(value,
+            style: TextStyle(
+                fontSize: 18, fontWeight: FontWeight.w800, color: color)),
+        Text(label,
+            style: const TextStyle(fontSize: 12, color: _sub)),
+      ],
+    );
+  }
+}
+
+// ── Applications Section ──────────────────────────────────────────────────────
 class _ApplicationsSection extends StatelessWidget {
   final bool loading;
   final List<Map<String, dynamic>> apps;
@@ -1089,22 +813,23 @@ class _ApplicationsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = allApps.where((a) => a['status'] == 'pending').length;
+    final active   = allApps.where((a) => a['status'] == 'pending').length;
     final accepted = allApps.where((a) => a['status'] == 'accepted').length;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Мои заявки',
-              style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  color: _text1)),
-          const SizedBox(height: 12),
-
-          // Filter chips
+          const Padding(
+            padding: EdgeInsets.only(top: 20, bottom: 12),
+            child: Text('Мои заявки',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: _ink,
+                    letterSpacing: -0.3)),
+          ),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -1127,13 +852,13 @@ class _ApplicationsSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-
           if (loading)
             const Center(
-                child: Padding(
-              padding: EdgeInsets.all(32),
-              child: CircularProgressIndicator(color: _blue, strokeWidth: 2),
-            ))
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: CircularProgressIndicator(color: _blue, strokeWidth: 2),
+              ),
+            )
           else if (apps.isEmpty)
             _EmptyApplications()
           else
@@ -1141,6 +866,7 @@ class _ApplicationsSection extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 10),
                   child: _ApplicationCard(app: app, onReport: onReport),
                 )),
+          const SizedBox(height: 8),
         ],
       ),
     );
@@ -1151,9 +877,7 @@ class _FilterChip extends StatelessWidget {
   final String label;
   final bool active;
   final VoidCallback onTap;
-
-  const _FilterChip(
-      {required this.label, required this.active, required this.onTap});
+  const _FilterChip({required this.label, required this.active, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1165,14 +889,14 @@ class _FilterChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: active ? _blue : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: active ? _blue : _border),
+          border: Border.all(color: active ? _blue : _div),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: active ? Colors.white : _text2,
+            color: active ? Colors.white : _sub,
           ),
         ),
       ),
@@ -1183,28 +907,24 @@ class _FilterChip extends StatelessWidget {
 class _EmptyApplications extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _border),
-      ),
-      child: const Column(
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Row(
         children: [
-          Icon(Icons.search_rounded, size: 40, color: _text2),
-          SizedBox(height: 10),
-          Text('Ещё нет откликов',
-              style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: _text1)),
-          SizedBox(height: 4),
-          Text(
-            'Просматривай стажировки и откликайся\n— они появятся здесь',
-            style: TextStyle(fontSize: 13, color: _text2, height: 1.5),
-            textAlign: TextAlign.center,
+          const Icon(Icons.search_rounded, size: 18, color: _sub),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text('Ещё нет откликов',
+                    style: TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w600, color: _ink)),
+                SizedBox(height: 2),
+                Text('Просматривай стажировки и откликайся',
+                    style: TextStyle(fontSize: 13, color: _sub)),
+              ],
+            ),
           ),
         ],
       ),
@@ -1215,248 +935,278 @@ class _EmptyApplications extends StatelessWidget {
 class _ApplicationCard extends StatelessWidget {
   final Map<String, dynamic> app;
   final void Function(Map<String, dynamic>) onReport;
-
   const _ApplicationCard({required this.app, required this.onReport});
 
   @override
   Widget build(BuildContext context) {
-    final status = app['status'] as String? ?? 'pending';
+    final status    = app['status'] as String? ?? 'pending';
     final hasReport = app['has_report'] as bool? ?? false;
-    final title = app['internship_title'] as String? ?? '—';
-    final company = app['company'] as String? ?? '—';
+    final title     = app['internship_title'] as String? ?? '—';
+    final company   = app['company'] as String? ?? '—';
     final createdAt = app['created_at'] as String?;
 
     final (statusLabel, statusColor, statusBg, statusIcon) = switch (status) {
-      'accepted' => ('Принят!', _green, const Color(0xFFD1FAE5),
-          Icons.check_circle_outline_rounded),
-      'rejected' => ('Отказано', _red, const Color(0xFFFEE2E2),
-          Icons.cancel_outlined),
-      'completed' => ('Завершено', _text2, const Color(0xFFF1F5F9),
-          Icons.school_outlined),
-      _ => ('Рассматривается', _blue, const Color(0xFFEBF0FA),
-          Icons.hourglass_empty_rounded),
+      'accepted'  => ('Принят!', _green, const Color(0xFFD1FAE5), Icons.check_circle_outline_rounded),
+      'rejected'  => ('Отказано', _red, const Color(0xFFFEE2E2), Icons.cancel_outlined),
+      'completed' => ('Завершено', _sub, const Color(0xFFF1F5F9), Icons.school_outlined),
+      _ => ('Рассматривается', _blue, const Color(0xFFEBF0FA), Icons.hourglass_empty_rounded),
     };
 
     String? formattedDate;
     if (createdAt != null) {
       try {
         final dt = DateTime.parse(createdAt);
-        final months = [
-          '', 'янв', 'фев', 'мар', 'апр', 'май', 'июн',
-          'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'
-        ];
+        const months = ['', 'янв', 'фев', 'мар', 'апр', 'май', 'июн',
+            'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
         formattedDate = '${dt.day} ${months[dt.month]}';
       } catch (_) {}
     }
 
     return Container(
       decoration: _cardDeco,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    // Company logo placeholder
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: _surface,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: _border),
-                      ),
-                      child: Center(
-                        child: Text(
-                          company.isNotEmpty ? company[0].toUpperCase() : '?',
-                          style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: _blue),
-                        ),
-                      ),
+                Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: _surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: _div),
+                  ),
+                  child: Center(
+                    child: Text(
+                      company.isNotEmpty ? company[0].toUpperCase() : '?',
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w800, color: _blue),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(company,
-                              style: const TextStyle(
-                                  fontSize: 12, color: _text2)),
-                          Text(title,
-                              style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: _text1),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis),
-                        ],
-                      ),
-                    ),
-                    // Status badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: statusBg,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(statusIcon, size: 12, color: statusColor),
-                          const SizedBox(width: 4),
-                          Text(statusLabel,
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: statusColor)),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-                if (formattedDate != null) ...[
-                  const SizedBox(height: 10),
-                  const Divider(height: 1, color: _border),
-                  const SizedBox(height: 10),
-                  Row(
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.calendar_today_outlined,
-                          size: 12, color: _text2),
-                      const SizedBox(width: 4),
-                      Text('Подано $formattedDate',
+                      Text(company,
+                          style: const TextStyle(fontSize: 12, color: _sub)),
+                      Text(title,
                           style: const TextStyle(
-                              fontSize: 12, color: _text2)),
-                      const Spacer(),
-                      if (status == 'accepted')
-                        hasReport
-                            ? Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFD1FAE5),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Icon(Icons.check_circle_rounded,
-                                        size: 14, color: _green),
-                                    SizedBox(width: 4),
-                                    Text('Отчёт сдан',
-                                        style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: _green)),
-                                  ],
-                                ),
-                              )
-                            : GestureDetector(
-                                onTap: () => onReport(app),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEBF0FA),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Row(
-                                    children: [
-                                      Icon(Icons.edit_note_rounded,
-                                          size: 14, color: _blue),
-                                      SizedBox(width: 4),
-                                      Text('Сдать отчёт',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: _blue)),
-                                    ],
-                                  ),
-                                ),
-                              ),
+                              fontSize: 14, fontWeight: FontWeight.w700, color: _ink),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis),
                     ],
                   ),
-                ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusBg,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(statusIcon, size: 12, color: statusColor),
+                      const SizedBox(width: 4),
+                      Text(statusLabel,
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: statusColor)),
+                    ],
+                  ),
+                ),
               ],
             ),
-          ),
-        ],
+            if (formattedDate != null) ...[
+              const SizedBox(height: 10),
+              const Divider(height: 1, color: _div),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(Icons.calendar_today_outlined, size: 12, color: _sub),
+                  const SizedBox(width: 4),
+                  Text('Подано $formattedDate',
+                      style: const TextStyle(fontSize: 12, color: _sub)),
+                  const Spacer(),
+                  if (status == 'accepted')
+                    hasReport
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD1FAE5),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.check_circle_rounded,
+                                    size: 14, color: _green),
+                                SizedBox(width: 4),
+                                Text('Отчёт сдан',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: _green)),
+                              ],
+                            ),
+                          )
+                        : GestureDetector(
+                            onTap: () => onReport(app),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEBF0FA),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.edit_note_rounded,
+                                      size: 14, color: _blue),
+                                  SizedBox(width: 4),
+                                  Text('Сдать отчёт',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: _blue)),
+                                ],
+                              ),
+                            ),
+                          ),
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SETTINGS SECTION
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Settings Section ──────────────────────────────────────────────────────────
 class _SettingsSection extends StatelessWidget {
   final VoidCallback onLogout;
   const _SettingsSection({required this.onLogout});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        decoration: _cardDeco,
-        child: Column(
-          children: [
-            _SettingsTile(
-              icon: Icons.notifications_outlined,
-              label: 'Уведомления',
-              onTap: () {},
-            ),
-            const Divider(height: 1, indent: 54, color: _border),
-            _SettingsTile(
-              icon: Icons.lock_outline_rounded,
-              label: 'Изменить пароль',
-              onTap: () {},
-            ),
-            const Divider(height: 1, indent: 54, color: _border),
-            _SettingsTile(
-              icon: Icons.info_outline_rounded,
-              label: 'О приложении',
-              onTap: () {},
-            ),
-            const Divider(height: 1, color: _border),
-            _SettingsTile(
-              icon: Icons.logout_rounded,
-              label: 'Выйти из аккаунта',
-              iconColor: _red,
-              labelColor: _red,
-              onTap: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                    title: const Text('Выйти?',
-                        style: TextStyle(fontWeight: FontWeight.w700)),
-                    content:
-                        const Text('Вы уверены, что хотите выйти из аккаунта?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('Отмена'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('Выйти',
-                            style: TextStyle(color: _red)),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirm == true) onLogout();
-              },
-            ),
-          ],
+    return Column(
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, 4),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text('Настройки',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: _ink,
+                    letterSpacing: -0.3)),
+          ),
         ),
-      ),
+        ValueListenableBuilder<String>(
+          valueListenable: localeNotifier,
+          builder: (_, lang, _) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.language_rounded, size: 20, color: _sub),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Text('Язык',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: _ink)),
+                ),
+                for (final e in {'RU': 'ru', 'ҚЗ': 'kz', 'EN': 'en'}.entries)
+                  GestureDetector(
+                    onTap: () => setLocale(e.value),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      margin: const EdgeInsets.only(left: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: lang == e.value
+                            ? const Color(0xFFEBF0FA)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(7),
+                        border: Border.all(
+                          color: lang == e.value
+                              ? _blue
+                              : const Color(0xFFD1D5DB),
+                        ),
+                      ),
+                      child: Text(
+                        e.key,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: lang == e.value ? _blue : _sub,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const Divider(height: 1, indent: 54, color: _div),
+        _SettingsTile(
+          icon: Icons.notifications_outlined,
+          label: 'Уведомления',
+          onTap: () {},
+        ),
+        const Divider(height: 1, indent: 54, color: _div),
+        _SettingsTile(
+          icon: Icons.lock_outline_rounded,
+          label: 'Изменить пароль',
+          onTap: () {},
+        ),
+        const Divider(height: 1, indent: 54, color: _div),
+        _SettingsTile(
+          icon: Icons.info_outline_rounded,
+          label: 'О приложении',
+          onTap: () {},
+        ),
+        const Divider(height: 1, color: _div),
+        _SettingsTile(
+          icon: Icons.logout_rounded,
+          label: 'Выйти из аккаунта',
+          iconColor: _red,
+          labelColor: _red,
+          onTap: () async {
+            final confirm = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+                title: const Text('Выйти?',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                content: const Text(
+                    'Вы уверены, что хотите выйти из аккаунта?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Отмена'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child:
+                        const Text('Выйти', style: TextStyle(color: _red)),
+                  ),
+                ],
+              ),
+            );
+            if (confirm == true) onLogout();
+          },
+        ),
+      ],
     );
   }
 }
@@ -1478,38 +1228,239 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: iconColor ?? _text2),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(label,
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: labelColor ?? _text1)),
-              ),
-              if (iconColor == null)
-                const Icon(Icons.chevron_right,
-                    size: 18, color: _text2),
-            ],
-          ),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: iconColor ?? _sub),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(label,
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: labelColor ?? _ink)),
+            ),
+            if (iconColor == null)
+              const Icon(Icons.chevron_right, size: 18, color: _sub),
+          ],
         ),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// EDIT PROFILE SHEET
-// ─────────────────────────────────────────────────────────────────────────────
+// ── AI Profile Card ───────────────────────────────────────────────────────────
+class _AiProfileCard extends StatefulWidget {
+  final ApiService api;
+  const _AiProfileCard({required this.api});
+
+  @override
+  State<_AiProfileCard> createState() => _AiProfileCardState();
+}
+
+class _AiProfileCardState extends State<_AiProfileCard> {
+  bool _loading = false;
+  Map<String, dynamic>? _result;
+  String? _error;
+
+  Future<void> _analyze() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final r = await widget.api.getProfileAnalysis();
+      if (mounted) setState(() { _result = r; _loading = false; });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceAll('Exception: ', '');
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final score    = _result?['score'] as int?;
+    final analysis = _result?['analysis'] as String?;
+    final missing  = (_result?['missing_fields'] as List?)?.cast<String>() ?? [];
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4C1D95), Color(0xFF6D28D9)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6D28D9).withValues(alpha: 0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34, height: 34,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(Icons.auto_awesome_rounded,
+                    color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('AI Анализ профиля',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800)),
+                    Text('Как усилить профиль для работодателя',
+                        style: TextStyle(color: Colors.white70, fontSize: 11)),
+                  ],
+                ),
+              ),
+              if (score != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text('$score%',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900)),
+                ),
+            ],
+          ),
+          if (score != null) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: score / 100,
+                backgroundColor: Colors.white.withValues(alpha: 0.2),
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                minHeight: 5,
+              ),
+            ),
+            if (missing.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Добавь: ${missing.map(_fieldName).join(', ')}',
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ],
+          ],
+          if (analysis != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(analysis,
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 13, height: 1.5)),
+            ),
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const AiChatScreen(mode: AiChatMode.general),
+              )),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.chat_bubble_outline_rounded,
+                        color: Colors.white, size: 15),
+                    SizedBox(width: 6),
+                    Text('Обсудить с AI',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ),
+          ] else ...[
+            const SizedBox(height: 12),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(_error!,
+                    style: const TextStyle(
+                        color: Colors.white70, fontSize: 12)),
+              ),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _loading ? null : _analyze,
+                icon: _loading
+                    ? const SizedBox(
+                        width: 14, height: 14,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.psychology_outlined,
+                        color: Colors.white, size: 18),
+                label: Text(
+                  _loading ? 'Анализирую...' : 'Проанализировать профиль',
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w700),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.5)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _fieldName(String key) => switch (key) {
+        'photo'      => 'фото',
+        'university' => 'университет',
+        'specialty'  => 'специальность',
+        'skills'     => 'навыки',
+        'bio'        => 'о себе',
+        'cv'         => 'CV',
+        _ => key,
+      };
+}
+
+// ── Edit Profile Sheet ────────────────────────────────────────────────────────
 class _EditProfileSheet extends StatefulWidget {
   final User user;
   final AuthService authService;
@@ -1532,13 +1483,10 @@ class _EditProfileSheetState extends State<_EditProfileSheet>
   late final TabController _tabs;
   bool _saving = false;
 
-  // Tab 0 — Identity
   late final TextEditingController _firstName;
   late final TextEditingController _lastName;
   late final TextEditingController _bio;
   late final TextEditingController _portfolio;
-
-  // Tab 1 — Education
   late final TextEditingController _university;
   late final TextEditingController _specialty;
   int? _studyYear;
@@ -1546,20 +1494,23 @@ class _EditProfileSheetState extends State<_EditProfileSheet>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 2, vsync: this, initialIndex: widget.initialTab);
-    _firstName = TextEditingController(text: widget.user.firstName);
-    _lastName = TextEditingController(text: widget.user.lastName);
-    _bio = TextEditingController(text: widget.user.bio ?? '');
-    _portfolio = TextEditingController(text: widget.user.portfolioUrl ?? '');
+    _tabs = TabController(
+        length: 2, vsync: this, initialIndex: widget.initialTab);
+    _firstName  = TextEditingController(text: widget.user.firstName);
+    _lastName   = TextEditingController(text: widget.user.lastName);
+    _bio        = TextEditingController(text: widget.user.bio ?? '');
+    _portfolio  = TextEditingController(text: widget.user.portfolioUrl ?? '');
     _university = TextEditingController(text: widget.user.universityName ?? '');
-    _specialty = TextEditingController(text: widget.user.specialty ?? '');
-    _studyYear = widget.user.studyYear;
+    _specialty  = TextEditingController(text: widget.user.specialty ?? '');
+    _studyYear  = widget.user.studyYear;
   }
 
   @override
   void dispose() {
     _tabs.dispose();
-    for (final c in [_firstName, _lastName, _bio, _portfolio, _university, _specialty]) {
+    for (final c in [
+      _firstName, _lastName, _bio, _portfolio, _university, _specialty
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -1569,13 +1520,13 @@ class _EditProfileSheetState extends State<_EditProfileSheet>
     setState(() => _saving = true);
     try {
       final updated = await widget.authService.updateProfile(
-        firstName: _firstName.text.trim(),
-        lastName: _lastName.text.trim(),
-        bio: _bio.text.trim(),
-        portfolioUrl: _portfolio.text.trim(),
+        firstName:      _firstName.text.trim(),
+        lastName:       _lastName.text.trim(),
+        bio:            _bio.text.trim(),
+        portfolioUrl:   _portfolio.text.trim(),
         universityName: _university.text.trim(),
-        specialty: _specialty.text.trim(),
-        studyYear: _studyYear,
+        specialty:      _specialty.text.trim(),
+        studyYear:      _studyYear,
       );
       widget.onSaved(updated);
       if (mounted) Navigator.pop(context);
@@ -1594,7 +1545,8 @@ class _EditProfileSheetState extends State<_EditProfileSheet>
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: Container(
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -1606,12 +1558,10 @@ class _EditProfileSheetState extends State<_EditProfileSheet>
             const SizedBox(height: 12),
             Center(
               child: Container(
-                width: 40,
-                height: 4,
+                width: 40, height: 4,
                 decoration: BoxDecoration(
-                  color: _border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                    color: _div,
+                    borderRadius: BorderRadius.circular(2)),
               ),
             ),
             const SizedBox(height: 16),
@@ -1634,14 +1584,12 @@ class _EditProfileSheetState extends State<_EditProfileSheet>
                     ),
                     child: _saving
                         ? const SizedBox(
-                            width: 16,
-                            height: 16,
+                            width: 16, height: 16,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
                         : const Text('Сохранить',
                             style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700)),
+                                fontSize: 13, fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),
@@ -1652,22 +1600,16 @@ class _EditProfileSheetState extends State<_EditProfileSheet>
               labelStyle: const TextStyle(
                   fontSize: 13, fontWeight: FontWeight.w600),
               labelColor: _blue,
-              unselectedLabelColor: _text2,
+              unselectedLabelColor: _sub,
               indicatorColor: _blue,
               indicatorSize: TabBarIndicatorSize.label,
-              tabs: const [
-                Tab(text: 'Обо мне'),
-                Tab(text: 'Образование'),
-              ],
+              tabs: const [Tab(text: 'Обо мне'), Tab(text: 'Образование')],
             ),
             SizedBox(
               height: 340,
               child: TabBarView(
                 controller: _tabs,
-                children: [
-                  _buildIdentityTab(),
-                  _buildEducationTab(),
-                ],
+                children: [_buildIdentityTab(), _buildEducationTab()],
               ),
             ),
           ],
@@ -1685,18 +1627,12 @@ class _EditProfileSheetState extends State<_EditProfileSheet>
           const SizedBox(height: 12),
           _SheetField(ctrl: _lastName, label: 'Фамилия', icon: Icons.person_outline),
           const SizedBox(height: 12),
-          _SheetField(
-            ctrl: _bio,
-            label: 'Bio — расскажи о себе',
-            icon: Icons.notes_rounded,
-            maxLines: 3,
-          ),
+          _SheetField(ctrl: _bio, label: 'Bio — расскажи о себе',
+              icon: Icons.notes_rounded, maxLines: 3),
           const SizedBox(height: 12),
-          _SheetField(
-            ctrl: _portfolio,
-            label: 'Portfolio URL (GitHub, Behance...)',
-            icon: Icons.link_rounded,
-          ),
+          _SheetField(ctrl: _portfolio,
+              label: 'Portfolio URL (GitHub, Behance...)',
+              icon: Icons.link_rounded),
         ],
       ),
     );
@@ -1707,17 +1643,11 @@ class _EditProfileSheetState extends State<_EditProfileSheet>
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
       child: Column(
         children: [
-          _SheetField(
-            ctrl: _university,
-            label: 'Университет',
-            icon: Icons.school_outlined,
-          ),
+          _SheetField(ctrl: _university, label: 'Университет',
+              icon: Icons.school_outlined),
           const SizedBox(height: 12),
-          _SheetField(
-            ctrl: _specialty,
-            label: 'Специальность',
-            icon: Icons.book_outlined,
-          ),
+          _SheetField(ctrl: _specialty, label: 'Специальность',
+              icon: Icons.book_outlined),
           const SizedBox(height: 12),
           DropdownButtonFormField<int>(
             initialValue: _studyYear,
@@ -1729,16 +1659,15 @@ class _EditProfileSheetState extends State<_EditProfileSheet>
               fillColor: _surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: _border),
+                borderSide: const BorderSide(color: _div),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: _border),
+                borderSide: const BorderSide(color: _div),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide:
-                    const BorderSide(color: _blue, width: 1.5),
+                borderSide: const BorderSide(color: _blue, width: 1.5),
               ),
             ),
             items: const [
@@ -1761,7 +1690,6 @@ class _SheetField extends StatelessWidget {
   final String label;
   final IconData icon;
   final int maxLines;
-
   const _SheetField({
     required this.ctrl,
     required this.label,
@@ -1781,11 +1709,11 @@ class _SheetField extends StatelessWidget {
         fillColor: _surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _border),
+          borderSide: const BorderSide(color: _div),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _border),
+          borderSide: const BorderSide(color: _div),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -1796,13 +1724,10 @@ class _SheetField extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SKILLS SHEET
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Skills Sheet ──────────────────────────────────────────────────────────────
 class _SkillsSheet extends StatefulWidget {
   final List<String> skills;
   final Future<void> Function(List<String>) onSave;
-
   const _SkillsSheet({required this.skills, required this.onSave});
 
   @override
@@ -1847,11 +1772,11 @@ class _SkillsSheetState extends State<_SkillsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final suggestions =
-        _suggestions.where((s) => !_skills.contains(s)).toList();
+    final suggestions = _suggestions.where((s) => !_skills.contains(s)).toList();
 
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: Container(
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -1864,10 +1789,9 @@ class _SkillsSheetState extends State<_SkillsSheet> {
           children: [
             Center(
               child: Container(
-                  width: 40,
-                  height: 4,
+                  width: 40, height: 4,
                   decoration: BoxDecoration(
-                      color: _border,
+                      color: _div,
                       borderRadius: BorderRadius.circular(2))),
             ),
             const SizedBox(height: 16),
@@ -1888,8 +1812,7 @@ class _SkillsSheetState extends State<_SkillsSheet> {
                   ),
                   child: _saving
                       ? const SizedBox(
-                          width: 16,
-                          height: 16,
+                          width: 16, height: 16,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
                       : const Text('Сохранить',
@@ -1899,8 +1822,6 @@ class _SkillsSheetState extends State<_SkillsSheet> {
               ],
             ),
             const SizedBox(height: 16),
-
-            // Input
             Row(
               children: [
                 Expanded(
@@ -1912,10 +1833,10 @@ class _SkillsSheetState extends State<_SkillsSheet> {
                       fillColor: _surface,
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: _border)),
+                          borderSide: const BorderSide(color: _div)),
                       enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: _border)),
+                          borderSide: const BorderSide(color: _div)),
                       focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide:
@@ -1940,27 +1861,23 @@ class _SkillsSheetState extends State<_SkillsSheet> {
               ],
             ),
             const SizedBox(height: 14),
-
-            // Current skills
             if (_skills.isNotEmpty) ...[
               const Text('Добавлено:',
-                  style: TextStyle(fontSize: 12, color: _text2)),
+                  style: TextStyle(fontSize: 12, color: _sub)),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: _skills
-                    .map((s) => _RemovableChip(
-                        label: s, onRemove: () => _remove(s)))
+                    .map((s) =>
+                        _RemovableChip(label: s, onRemove: () => _remove(s)))
                     .toList(),
               ),
               const SizedBox(height: 14),
             ],
-
-            // Suggestions
             if (suggestions.isNotEmpty) ...[
               const Text('Популярные:',
-                  style: TextStyle(fontSize: 12, color: _text2)),
+                  style: TextStyle(fontSize: 12, color: _sub)),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -1975,17 +1892,16 @@ class _SkillsSheetState extends State<_SkillsSheet> {
                             decoration: BoxDecoration(
                               color: _surface,
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: _border),
+                              border: Border.all(color: _div),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.add,
-                                    size: 12, color: _text2),
+                                const Icon(Icons.add, size: 12, color: _sub),
                                 const SizedBox(width: 4),
                                 Text(s,
                                     style: const TextStyle(
-                                        fontSize: 12, color: _text2)),
+                                        fontSize: 12, color: _sub)),
                               ],
                             ),
                           ),
@@ -2001,17 +1917,16 @@ class _SkillsSheetState extends State<_SkillsSheet> {
   }
 }
 
+
 class _RemovableChip extends StatelessWidget {
   final String label;
   final VoidCallback onRemove;
-
   const _RemovableChip({required this.label, required this.onRemove});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding:
-          const EdgeInsets.only(left: 12, top: 6, bottom: 6, right: 4),
+      padding: const EdgeInsets.only(left: 12, top: 6, bottom: 6, right: 4),
       decoration: BoxDecoration(
         color: const Color(0xFFEBF0FA),
         borderRadius: BorderRadius.circular(20),
@@ -2021,9 +1936,7 @@ class _RemovableChip extends StatelessWidget {
         children: [
           Text(label,
               style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: _blue)),
+                  fontSize: 12, fontWeight: FontWeight.w600, color: _blue)),
           const SizedBox(width: 4),
           GestureDetector(
             onTap: onRemove,
@@ -2035,14 +1948,11 @@ class _RemovableChip extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// REPORT SHEET (existing)
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Report Sheet ──────────────────────────────────────────────────────────────
 class _ReportSheet extends StatefulWidget {
   final Map<String, dynamic> app;
   final ApiService apiService;
   final VoidCallback onSuccess;
-
   const _ReportSheet({
     required this.app,
     required this.apiService,
@@ -2054,10 +1964,10 @@ class _ReportSheet extends StatefulWidget {
 }
 
 class _ReportSheetState extends State<_ReportSheet> {
-  final _tasks = TextEditingController();
+  final _tasks    = TextEditingController();
+  final _skillCtrl = TextEditingController();
   int _hours = 0;
   final List<String> _skillsGained = [];
-  final _skillCtrl = TextEditingController();
   bool _saving = false;
 
   @override
@@ -2072,10 +1982,10 @@ class _ReportSheetState extends State<_ReportSheet> {
     setState(() => _saving = true);
     try {
       await widget.apiService.submitReport(
-        applicationId: widget.app['id'] as int,
+        applicationId:    widget.app['id'] as int,
         tasksDescription: _tasks.text.trim(),
-        hoursCompleted: _hours,
-        skillsGained: _skillsGained,
+        hoursCompleted:   _hours,
+        skillsGained:     _skillsGained,
       );
       widget.onSuccess();
       if (mounted) Navigator.pop(context);
@@ -2106,18 +2016,15 @@ class _ReportSheetState extends State<_ReportSheet> {
           children: [
             Center(
               child: Container(
-                  width: 40,
-                  height: 4,
+                  width: 40, height: 4,
                   decoration: BoxDecoration(
-                      color: _border,
+                      color: _div,
                       borderRadius: BorderRadius.circular(2))),
             ),
             const SizedBox(height: 20),
             const Text('Отчёт о стажировке',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
             const SizedBox(height: 20),
-
-            // Tasks
             TextField(
               controller: _tasks,
               maxLines: 4,
@@ -2128,19 +2035,16 @@ class _ReportSheetState extends State<_ReportSheet> {
                 fillColor: _surface,
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _border)),
+                    borderSide: const BorderSide(color: _div)),
                 enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _border)),
+                    borderSide: const BorderSide(color: _div)),
                 focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                        const BorderSide(color: _blue, width: 1.5)),
+                    borderSide: const BorderSide(color: _blue, width: 1.5)),
               ),
             ),
             const SizedBox(height: 16),
-
-            // Hours
             Row(
               children: [
                 const Text('Часов отработано:',
@@ -2162,8 +2066,6 @@ class _ReportSheetState extends State<_ReportSheet> {
               ],
             ),
             const SizedBox(height: 16),
-
-            // Skills gained
             const Text('Навыки, полученные на стажировке:',
                 style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
@@ -2178,10 +2080,10 @@ class _ReportSheetState extends State<_ReportSheet> {
                       fillColor: _surface,
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: _border)),
+                          borderSide: const BorderSide(color: _div)),
                       enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: _border)),
+                          borderSide: const BorderSide(color: _div)),
                       focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide:
@@ -2191,8 +2093,7 @@ class _ReportSheetState extends State<_ReportSheet> {
                     ),
                     onSubmitted: (s) {
                       final skill = s.trim();
-                      if (skill.isNotEmpty &&
-                          !_skillsGained.contains(skill)) {
+                      if (skill.isNotEmpty && !_skillsGained.contains(skill)) {
                         setState(() => _skillsGained.add(skill));
                         _skillCtrl.clear();
                       }
@@ -2231,7 +2132,6 @@ class _ReportSheetState extends State<_ReportSheet> {
                     .toList(),
               ),
             ],
-
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -2245,8 +2145,7 @@ class _ReportSheetState extends State<_ReportSheet> {
                 ),
                 child: _saving
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 20, height: 20,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
                     : const Text('Отправить отчёт',
@@ -2259,210 +2158,4 @@ class _ReportSheetState extends State<_ReportSheet> {
       ),
     );
   }
-}
-
-// ── AI Profile Card ────────────────────────────────────────────────────────────
-
-class _AiProfileCard extends StatefulWidget {
-  final ApiService api;
-  const _AiProfileCard({required this.api});
-
-  @override
-  State<_AiProfileCard> createState() => _AiProfileCardState();
-}
-
-class _AiProfileCardState extends State<_AiProfileCard> {
-  bool _loading = false;
-  Map<String, dynamic>? _result;
-  String? _error;
-
-  Future<void> _analyze() async {
-    setState(() { _loading = true; _error = null; });
-    try {
-      final r = await widget.api.getProfileAnalysis();
-      if (mounted) { setState(() { _result = r; _loading = false; }); }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString().replaceAll('Exception: ', '');
-          _loading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final score = _result?['score'] as int?;
-    final analysis = _result?['analysis'] as String?;
-    final missing = (_result?['missing_fields'] as List?)?.cast<String>() ?? [];
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF4C1D95), Color(0xFF6D28D9)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF6D28D9).withValues(alpha: 0.25),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.auto_awesome_rounded,
-                    color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('AI Анализ профиля',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800)),
-                    Text('Как усилить профиль для работодателя',
-                        style: TextStyle(color: Colors.white70, fontSize: 11)),
-                  ],
-                ),
-              ),
-              if (score != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text('$score%',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900)),
-                ),
-            ],
-          ),
-          if (score != null) ...[
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: score / 100,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                minHeight: 6,
-              ),
-            ),
-            if (missing.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Добавь: ${missing.map(_fieldName).join(', ')}',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-            ],
-          ],
-          if (analysis != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(analysis,
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: 13, height: 1.5)),
-            ),
-            const SizedBox(height: 10),
-            GestureDetector(
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const AiChatScreen(mode: AiChatMode.general),
-              )),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.chat_bubble_outline_rounded,
-                        color: Colors.white, size: 15),
-                    SizedBox(width: 6),
-                    Text('Обсудить с AI',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-            ),
-          ] else ...[
-            const SizedBox(height: 14),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Text(_error!,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12)),
-              ),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _loading ? null : _analyze,
-                icon: _loading
-                    ? const SizedBox(
-                        width: 14, height: 14,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.psychology_outlined,
-                        color: Colors.white, size: 18),
-                label: Text(
-                  _loading ? 'Анализирую...' : 'Проанализировать профиль',
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w700),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  String _fieldName(String key) => switch (key) {
-        'photo' => 'фото',
-        'university' => 'университет',
-        'specialty' => 'специальность',
-        'skills' => 'навыки',
-        'bio' => 'о себе',
-        'cv' => 'CV',
-        _ => key,
-      };
 }

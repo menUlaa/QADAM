@@ -5,16 +5,23 @@ import 'package:internship_app2/models/internship.dart';
 import 'package:internship_app2/screens/ai_chat_screen.dart';
 import 'package:internship_app2/services/api_service.dart';
 
+const _ink    = Color(0xFF0F172A);
+const _body   = Color(0xFF475569);
+const _blue   = Color(0xFF2563EB);
+const _green  = Color(0xFF16A34A);
+const _border = Color(0xFFE2E8F0);
+const _surface = Color(0xFFF8FAFC);
+
 const _categoryColors = {
-  'IT': Color(0xFF2164F3),
-  'Финансы': Color(0xFF047857),
-  'Дизайн': Color(0xFFB45309),
+  'IT':        Color(0xFF2563EB),
+  'Финансы':   Color(0xFF0891B2),
+  'Дизайн':    Color(0xFF7C3AED),
   'Маркетинг': Color(0xFFDC2626),
-  'HR': Color(0xFF7C3AED),
+  'HR':        Color(0xFFD97706),
 };
 
 Color _accentFor(String cat) =>
-    _categoryColors[cat] ?? const Color(0xFF2164F3);
+    _categoryColors[cat] ?? _blue;
 
 class DetailsScreen extends StatefulWidget {
   final Internship internship;
@@ -64,7 +71,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                     fontWeight: FontWeight.w700, fontSize: 15)),
             Text(widget.internship.company,
                 style: const TextStyle(
-                    color: Color(0xFF6B7280), fontSize: 13)),
+                    color: _body, fontSize: 13)),
             const SizedBox(height: 16),
             TextField(
               controller: messageController,
@@ -72,16 +79,16 @@ class _DetailsScreenState extends State<DetailsScreen> {
               decoration: InputDecoration(
                 hintText: tr('apply_message_hint'),
                 filled: true,
-                fillColor: const Color(0xFFF9FAFB),
+                fillColor: _surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide:
-                      const BorderSide(color: Color(0xFFE5E7EB)),
+                      const BorderSide(color: _border),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide:
-                      const BorderSide(color: Color(0xFFE5E7EB)),
+                      const BorderSide(color: _border),
                 ),
               ),
             ),
@@ -92,11 +99,11 @@ class _DetailsScreenState extends State<DetailsScreen> {
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(tr('cancel'),
                 style:
-                    const TextStyle(color: Color(0xFF6B7280))),
+                    const TextStyle(color: _body)),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF2164F3),
+              backgroundColor: _blue,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
             ),
@@ -117,7 +124,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(tr('apply_success')),
-          backgroundColor: const Color(0xFF16A34A),
+          backgroundColor: _green,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -144,14 +151,14 @@ class _DetailsScreenState extends State<DetailsScreen> {
     final accent = _accentFor(it.category);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: _surface,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF111827),
+        foregroundColor: _ink,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: const TextStyle(
-          color: Color(0xFF111827),
+          color: _ink,
           fontSize: 16,
           fontWeight: FontWeight.w700,
         ),
@@ -166,7 +173,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: const Color(0xFFE5E7EB)),
+          child: Container(height: 1, color: _border),
         ),
       ),
 
@@ -176,14 +183,14 @@ class _DetailsScreenState extends State<DetailsScreen> {
             16, 12, 16, MediaQuery.paddingOf(context).bottom + 12),
         decoration: const BoxDecoration(
           color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+          border: Border(top: BorderSide(color: _border)),
         ),
         child: SizedBox(
           height: 50,
           child: FilledButton(
             onPressed: _applied || _applying ? null : _showApplyDialog,
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF2164F3),
+              backgroundColor: _blue,
               disabledBackgroundColor: const Color(0xFFD1D5DB),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
@@ -293,7 +300,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                             style: const TextStyle(
                               fontSize: 19,
                               fontWeight: FontWeight.w800,
-                              color: Color(0xFF111827),
+                              color: _ink,
                               height: 1.25,
                             ),
                           ),
@@ -303,7 +310,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF374151),
+                              color: _body,
                             ),
                           ),
                         ],
@@ -317,34 +324,34 @@ class _DetailsScreenState extends State<DetailsScreen> {
                   runSpacing: 8,
                   children: [
                     _pillChip(Icons.location_on_outlined, it.city,
-                        const Color(0xFF6B7280)),
+                        _body),
                     _pillChip(Icons.work_outline_rounded, it.format,
-                        const Color(0xFF6B7280)),
+                        _body),
                     if (it.salaryKzt != null)
                       _pillChip(
                         Icons.payments_outlined,
                         '${it.salaryKzt} ₸',
-                        const Color(0xFF15803D),
+                        _green,
                         bg: const Color(0xFFF0FDF4),
                         border: const Color(0xFFBBF7D0),
                       ),
                     if (it.duration.isNotEmpty)
                       _pillChip(Icons.schedule_rounded, it.duration,
-                          const Color(0xFF6B7280)),
+                          _body),
                     _pillChip(
                       it.paid
                           ? Icons.attach_money
                           : Icons.money_off_outlined,
                       it.paid ? tr('paid') : tr('unpaid'),
                       it.paid
-                          ? const Color(0xFF15803D)
+                          ? _green
                           : const Color(0xFF9CA3AF),
                       bg: it.paid
                           ? const Color(0xFFF0FDF4)
-                          : const Color(0xFFF9FAFB),
+                          : _surface,
                       border: it.paid
                           ? const Color(0xFFBBF7D0)
-                          : const Color(0xFFE5E7EB),
+                          : _border,
                     ),
                   ],
                 ),
@@ -365,7 +372,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
               it.description,
               style: const TextStyle(
                 fontSize: 14,
-                color: Color(0xFF374151),
+                color: _body,
                 height: 1.6,
               ),
             ),
@@ -418,7 +425,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF2164F3),
+                              color: _blue,
                             ),
                           ),
                         ))
@@ -439,14 +446,14 @@ class _DetailsScreenState extends State<DetailsScreen> {
             child: Row(
               children: [
                 const Icon(Icons.email_outlined,
-                    size: 18, color: Color(0xFF2164F3)),
+                    size: 18, color: _blue),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     it.contactEmail,
                     style: const TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF2164F3),
+                      color: _blue,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -465,8 +472,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
     IconData icon,
     String label,
     Color color, {
-    Color bg = const Color(0xFFF9FAFB),
-    Color border = const Color(0xFFE5E7EB),
+    Color bg = _surface,
+    Color border = _border,
   }) {
     return Container(
       padding:
@@ -517,14 +524,14 @@ class _AiPreparationSection extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1E3A8A), Color(0xFF2164F3)],
+          colors: [Color(0xFF1E3A8A), _blue],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2164F3).withValues(alpha: 0.25),
+            color: _blue.withValues(alpha: 0.25),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -684,7 +691,7 @@ Widget _section(String title, {required Widget child}) {
               width: 3,
               height: 16,
               decoration: BoxDecoration(
-                color: const Color(0xFF2164F3),
+                color: _blue,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -694,7 +701,7 @@ Widget _section(String title, {required Widget child}) {
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF111827),
+                color: _ink,
                 letterSpacing: -0.2,
               ),
             ),
@@ -717,7 +724,7 @@ Widget _bullet(String text) {
           padding: EdgeInsets.only(top: 5),
           child: CircleAvatar(
             radius: 3,
-            backgroundColor: Color(0xFF2164F3),
+            backgroundColor: _blue,
           ),
         ),
         const SizedBox(width: 10),
@@ -726,7 +733,7 @@ Widget _bullet(String text) {
             text,
             style: const TextStyle(
               fontSize: 14,
-              color: Color(0xFF374151),
+              color: _body,
               height: 1.5,
             ),
           ),

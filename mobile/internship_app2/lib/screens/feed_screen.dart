@@ -212,39 +212,30 @@ class _FeedScreenState extends State<FeedScreen> {
   Widget _searchBox() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: const Color(0xFFF3F2EF),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFD1D5DB)),
       ),
       child: Row(
         children: [
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 12),
-            child: Icon(Icons.search, color: Color(0xFF2164F3), size: 22),
+            child: Icon(Icons.search, color: Color(0xFF767676), size: 20),
           ),
           Expanded(
             child: TextField(
               controller: _search,
               decoration: InputDecoration(
                 hintText: tr('search_hint'),
-                hintStyle: const TextStyle(
-                    color: Color(0xFF767676), fontSize: 15),
+                hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
                 border: InputBorder.none,
-                contentPadding:
-                    const EdgeInsets.symmetric(vertical: 13),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
           if (_search.text.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.close,
-                  size: 18, color: Color(0xFF767676)),
+              icon: const Icon(Icons.close, size: 16, color: Color(0xFF9CA3AF)),
               onPressed: () => _search.clear(),
             ),
         ],
@@ -253,44 +244,41 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Widget _filterButton(int activeFilters) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        ElevatedButton.icon(
-          onPressed: _openFilters,
-          icon: const Icon(Icons.tune_rounded, size: 18),
-          label: Text(tr('filters_title')),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: const Color(0xFF2164F3),
-            elevation: 2,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6)),
+    return GestureDetector(
+      onTap: _openFilters,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: activeFilters > 0 ? const Color(0xFFEFF6FF) : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: activeFilters > 0
+                ? const Color(0xFF2164F3)
+                : const Color(0xFFD1D5DB),
           ),
         ),
-        if (activeFilters > 0)
-          Positioned(
-            right: -4,
-            top: -4,
-            child: Container(
-              width: 18,
-              height: 18,
-              decoration: const BoxDecoration(
-                  color: Colors.orange, shape: BoxShape.circle),
-              child: Center(
-                child: Text(
-                  '$activeFilters',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800),
-                ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.tune_rounded,
+                size: 16,
+                color: activeFilters > 0
+                    ? const Color(0xFF2164F3)
+                    : const Color(0xFF595959)),
+            const SizedBox(width: 5),
+            Text(
+              activeFilters > 0 ? 'Фильтры ($activeFilters)' : 'Фильтры',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: activeFilters > 0
+                    ? const Color(0xFF2164F3)
+                    : const Color(0xFF595959),
               ),
             ),
-          ),
-      ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -300,71 +288,55 @@ class _FeedScreenState extends State<FeedScreen> {
     final activeFilters = _filters.activeCount;
 
     return Scaffold(
-      // On desktop the header is in MainScreen, so no AppBar here
-      appBar: isDesktop
-          ? null
-          : AppBar(
-              title: const Text('Qadam'),
-              actions: [
-                IconButton(
-                  tooltip: tr('refresh'),
-                  onPressed: _loadInternships,
-                  icon: const Icon(Icons.refresh),
-                ),
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    IconButton(
-                      tooltip: tr('filters_title'),
-                      onPressed: _openFilters,
-                      icon: const Icon(Icons.tune_rounded),
-                    ),
-                    if (activeFilters > 0)
-                      Positioned(
-                        right: 6,
-                        top: 6,
-                        child: Container(
-                          width: 16,
-                          height: 16,
-                          decoration: const BoxDecoration(
-                            color: Colors.orange,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '$activeFilters',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(width: 6),
-              ],
+      backgroundColor: const Color(0xFFF3F2EF),
+      appBar: isDesktop ? null : AppBar(
+              toolbarHeight: 0,
+              elevation: 0,
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              bottom: PreferredSize(
+                preferredSize: Size.zero,
+                child: Divider(height: 1, color: Colors.grey.shade200),
+              ),
             ),
       body: Column(
         children: [
-          // Mobile-only search bar (desktop hero is inside the scroll view)
+          // Mobile-only search + header
           if (!isDesktop)
             Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF0F2166), Color(0xFF2164F3)],
-                ),
-              ),
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
-              child: Row(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: _searchBox()),
-                  const SizedBox(width: 8),
-                  _filterButton(activeFilters),
+                  // Top: title + filter button
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Qadam',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF2557A7),
+                                  letterSpacing: -0.5,
+                                )),
+                            Text(
+                              'Стажировки в Казахстане',
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey.shade500),
+                            ),
+                          ],
+                        ),
+                      ),
+                      _filterButton(activeFilters),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  // Search bar
+                  _searchBox(),
                 ],
               ),
             ),
@@ -967,52 +939,67 @@ class _CategoryBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return SizedBox(
-      height: 52,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: _categoryKeys.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, i) {
-          final cat = _categoryKeys[i];
-          final isSelected = cat == selected;
-          return GestureDetector(
-            onTap: () => onSelect(cat),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: isSelected ? cs.primary : cs.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected ? cs.primary : cs.outlineVariant,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _categoryIcons[cat] ?? Icons.label_outline,
-                    size: 15,
-                    color: isSelected ? Colors.white : cs.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    tr(cat),
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isSelected ? Colors.white : cs.onSurfaceVariant,
+    return Container(
+      color: Colors.white,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 46,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              itemCount: _categoryKeys.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 4),
+              itemBuilder: (context, i) {
+                final cat = _categoryKeys[i];
+                final isSelected = cat == selected;
+                return GestureDetector(
+                  onTap: () => onSelect(cat),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: isSelected
+                              ? const Color(0xFF2557A7)
+                              : Colors.transparent,
+                          width: 2.5,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _categoryIcons[cat] ?? Icons.label_outline,
+                          size: 14,
+                          color: isSelected
+                              ? const Color(0xFF2557A7)
+                              : const Color(0xFF767676),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          tr(cat),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: isSelected
+                                ? const Color(0xFF2557A7)
+                                : const Color(0xFF595959),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                );
+              },
             ),
-          );
-        },
+          ),
+          const Divider(height: 1, color: Color(0xFFE4E2E0)),
+        ],
       ),
     );
   }

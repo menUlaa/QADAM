@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:internship_app2/l10n/strings.dart';
 import 'package:internship_app2/screens/ai_chat_screen.dart';
-import 'package:internship_app2/screens/companies_screen.dart';
+import 'package:internship_app2/screens/applications_screen.dart';
 import 'package:internship_app2/screens/favorites_screen.dart';
 import 'package:internship_app2/screens/feed_screen.dart';
 import 'package:internship_app2/screens/profile_screen.dart';
@@ -24,7 +24,7 @@ class _MainScreenState extends State<MainScreen> {
     final screens = [
       FeedScreen(),
       FavoritesScreen(),
-      const CompaniesScreen(),
+      const ApplicationsScreen(),
       const AiChatScreen(),
       ProfileScreen(onLogout: widget.onLogout),
     ];
@@ -76,14 +76,14 @@ class _MainScreenState extends State<MainScreen> {
             label: tr('nav_favorites'),
           ),
           NavigationDestination(
-            icon: const Icon(Icons.business_outlined),
-            selectedIcon: const Icon(Icons.business, color: Color(0xFF2164F3)),
-            label: tr('nav_companies'),
+            icon: const Icon(Icons.send_outlined),
+            selectedIcon: const Icon(Icons.send_rounded, color: Color(0xFF2164F3)),
+            label: tr('nav_applications'),
           ),
           NavigationDestination(
             icon: const Icon(Icons.auto_awesome_outlined),
             selectedIcon: const Icon(Icons.auto_awesome, color: Color(0xFF2164F3)),
-            label: 'AI',
+            label: tr('nav_ai'),
           ),
           NavigationDestination(
             icon: const Icon(Icons.person_outline),
@@ -144,13 +144,13 @@ class _DesktopHeader extends StatelessWidget {
             onTap: () => onTabSelected(1),
           ),
           _NavTab(
-            label: tr('nav_companies'),
-            icon: Icons.business_outlined,
+            label: tr('nav_applications_full'),
+            icon: Icons.send_outlined,
             selected: currentIndex == 2,
             onTap: () => onTabSelected(2),
           ),
           _NavTab(
-            label: 'AI Ассистент',
+            label: tr('nav_ai_full'),
             icon: Icons.auto_awesome_outlined,
             selected: currentIndex == 3,
             onTap: () => onTabSelected(3),

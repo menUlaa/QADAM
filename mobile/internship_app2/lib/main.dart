@@ -50,14 +50,14 @@ class QadamApp extends StatelessWidget {
             colorSchemeSeed: const Color(0xFF2164F3),
             brightness: Brightness.light,
             scaffoldBackgroundColor: const Color(0xFFF3F4F6),
-            textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme),
+            textTheme: GoogleFonts.plusJakartaSansTextTheme(ThemeData.light().textTheme),
             appBarTheme: AppBarTheme(
               backgroundColor: Colors.white,
               foregroundColor: const Color(0xFF111827),
               elevation: 0,
               surfaceTintColor: Colors.transparent,
               centerTitle: false,
-              titleTextStyle: GoogleFonts.inter(
+              titleTextStyle: GoogleFonts.plusJakartaSans(
                 color: const Color(0xFF111827),
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -81,11 +81,11 @@ class QadamApp extends StatelessWidget {
             useMaterial3: true,
             colorSchemeSeed: const Color(0xFF2164F3),
             brightness: Brightness.dark,
-            textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
+            textTheme: GoogleFonts.plusJakartaSansTextTheme(ThemeData.dark().textTheme),
             appBarTheme: AppBarTheme(
               elevation: 0,
               centerTitle: false,
-              titleTextStyle: GoogleFonts.inter(
+              titleTextStyle: GoogleFonts.plusJakartaSans(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.3,

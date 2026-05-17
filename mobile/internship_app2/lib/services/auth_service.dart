@@ -10,7 +10,7 @@ import 'package:internship_app2/services/base_url.dart';
 // Create OAuth 2.0 credentials → Web application
 // Add your ngrok/production URL to "Authorized JavaScript origins"
 const _kGoogleClientId =
-    'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com'; // <── replace this
+    '843187173948-ghpchs8c6suupc0a142r1522jgeav8dt.apps.googleusercontent.com';
 
 final _googleSignIn = GoogleSignIn(
   clientId: _kGoogleClientId,

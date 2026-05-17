@@ -8,10 +8,14 @@ import 'package:internship_app2/services/auth_service.dart';
 class AuthScreen extends StatefulWidget {
   final VoidCallback onSuccess;
   final UserRole role;
+  final String? initialEmail;
+  final bool initialIsLogin;
   const AuthScreen({
     super.key,
     required this.onSuccess,
     this.role = UserRole.student,
+    this.initialEmail,
+    this.initialIsLogin = false,
   });
 
   @override
@@ -20,7 +24,7 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen>
     with SingleTickerProviderStateMixin {
-  bool _isLogin = true;
+  late bool _isLogin;
   bool _loading = false;
   bool _isGraduate = false;
   bool _loadingHintVisible = false;
@@ -52,6 +56,8 @@ class _AuthScreenState extends State<AuthScreen>
   @override
   void initState() {
     super.initState();
+    _isLogin = widget.initialIsLogin;
+    if (widget.initialEmail != null) _email.text = widget.initialEmail!;
     _animCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 320),
@@ -62,7 +68,6 @@ class _AuthScreenState extends State<AuthScreen>
       begin: const Offset(0, 0.06),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut));
-    // Wake up the backend in the background so it's ready when the user logs in
     _authService.warmup();
   }
 
@@ -583,12 +588,19 @@ class _AuthScreenState extends State<AuthScreen>
               ),
               const SizedBox(height: 12),
             ],
-            _buildField(
-              controller: _email,
-              label: tr('email'),
-              icon: Icons.email_outlined,
-              type: TextInputType.emailAddress,
-            ),
+            // If email came from the entry screen — show as read-only label
+            if (widget.initialEmail != null && _isLogin)
+              _EmailLabel(
+                email: widget.initialEmail!,
+                onChange: () => Navigator.pop(context),
+              )
+            else
+              _buildField(
+                controller: _email,
+                label: tr('email'),
+                icon: Icons.email_outlined,
+                type: TextInputType.emailAddress,
+              ),
             const SizedBox(height: 12),
             _buildField(
               controller: _pass,
@@ -1227,6 +1239,49 @@ class _SearchPickerSheetState extends State<_SearchPickerSheet> {
               itemBuilder: (_, i) => ListTile(
                 title: Text(_filtered[i], style: const TextStyle(fontSize: 14)),
                 onTap: () => Navigator.pop(context, _filtered[i]),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Email label (read-only, shown when email came from entry screen) ──────────
+
+class _EmailLabel extends StatelessWidget {
+  final String email;
+  final VoidCallback onChange;
+  const _EmailLabel({required this.email, required this.onChange});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.email_outlined, size: 18, color: Color(0xFF9CA3AF)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              email,
+              style: const TextStyle(fontSize: 14, color: Color(0xFF111827)),
+            ),
+          ),
+          GestureDetector(
+            onTap: onChange,
+            child: const Text(
+              'Изменить',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF2563EB),
               ),
             ),
           ),

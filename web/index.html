@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Qadam — Платформа стажировок</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Nunito', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    .fade-in { animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .skeleton { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  </style>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { primary: '#2164F3', 'primary-dark': '#1a52cc', 'primary-light': '#EBF0FA' } } }
+    }
+  </script>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased">
+
+<!-- ══════════════════ NAVBAR ══════════════════ -->
+<nav id="navbar" class="hidden fixed top-0 left-0 right-0 bg-white/95 backdrop-blur border-b border-gray-200 z-40">
+  <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+    <button onclick="showView('landing')" class="text-primary font-black text-xl tracking-tight cursor-pointer">Qadam</button>
+
+    <div id="nav-student" class="hidden flex items-center gap-1 overflow-x-auto">
+      <button onclick="showView('student-feed')" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap cursor-pointer" data-view="student-feed">Стажировки</button>
+      <button onclick="showView('student-applications')" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap cursor-pointer" data-view="student-applications">Мои заявки</button>
+      <button onclick="showView('ai-chat')" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap cursor-pointer" data-view="ai-chat">AI Помощник</button>
+    </div>
+    <div id="nav-company" class="hidden flex items-center gap-1 overflow-x-auto">
+      <button onclick="showView('company-dashboard')" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap cursor-pointer" data-view="company-dashboard">Дэшборд</button>
+      <button onclick="showView('company-internships')" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap cursor-pointer" data-view="company-internships">Стажировки</button>
+      <button onclick="showView('company-applicants')" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap cursor-pointer" data-view="company-applicants">Кандидаты</button>
+    </div>
+    <div id="nav-university" class="hidden flex items-center gap-1 overflow-x-auto">
+      <button onclick="showView('uni-students')" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap cursor-pointer" data-view="uni-students">Студенты</button>
+      <button onclick="showView('uni-analytics')" class="nav-btn px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 whitespace-nowrap cursor-pointer" data-view="uni-analytics">Аналитика</button>
+    </div>
+
+    <div class="flex items-center gap-2 shrink-0">
+      <button id="profile-btn" class="hidden px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer">Профиль</button>
+      <button onclick="logout()" id="logout-btn" class="hidden px-3 py-1.5 text-sm font-medium text-red-500 hover:bg-red-50 rounded-lg cursor-pointer">Выйти</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════ VIEWS ══════════════════ -->
+<div id="views">
+
+<!-- ─── LANDING ─── -->
+<div id="view-landing" class="view min-h-screen">
+  <div class="bg-gradient-to-br from-primary via-indigo-600 to-purple-700 text-white">
+    <div class="max-w-6xl mx-auto px-6 pt-16 pb-24 text-center">
+      <div class="inline-flex items-center gap-2 bg-white/15 px-4 py-1.5 rounded-full text-sm font-medium mb-8 border border-white/20">
+        <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+        Платформа стажировок Казахстана
+      </div>
+      <h1 class="text-5xl md:text-6xl font-black leading-tight mb-6 tracking-tight">Начни карьеру<br>с правильной стажировки</h1>
+      <p class="text-white/75 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+        Qadam соединяет студентов с ведущими компаниями Казахстана. Находи стажировки, откликайся и развивайся с помощью AI.
+      </p>
+      <div class="flex flex-wrap justify-center gap-4">
+        <button onclick="showAuth('student')" class="px-8 py-4 bg-white text-primary font-bold rounded-2xl hover:bg-gray-100 transition-all shadow-lg hover:shadow-xl cursor-pointer text-base">
+          Я студент
+        </button>
+        <button onclick="showAuth('company')" class="px-8 py-4 bg-white/10 text-white font-bold rounded-2xl hover:bg-white/20 border border-white/30 transition-all cursor-pointer text-base backdrop-blur">
+          Я компания
+        </button>
+        <button onclick="showAuth('university')" class="px-8 py-4 bg-white/10 text-white font-bold rounded-2xl hover:bg-white/20 border border-white/30 transition-all cursor-pointer text-base backdrop-blur">
+          Университет
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats wave -->
+  <div class="bg-white border-b border-gray-100">
+    <div class="max-w-6xl mx-auto px-6 py-10">
+      <div class="grid grid-cols-3 gap-6 text-center">
+        <div><p class="text-4xl font-black text-primary">500+</p><p class="text-gray-500 text-sm mt-1 font-medium">Стажировок</p></div>
+        <div><p class="text-4xl font-black text-primary">200+</p><p class="text-gray-500 text-sm mt-1 font-medium">Компаний</p></div>
+        <div><p class="text-4xl font-black text-primary">5K+</p><p class="text-gray-500 text-sm mt-1 font-medium">Студентов</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <div class="max-w-6xl mx-auto px-6 py-16">
+    <h2 class="text-3xl font-black text-center mb-12 tracking-tight">Всё что нужно для карьеры</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="p-6 rounded-2xl border border-gray-200 hover:border-primary/40 hover:shadow-lg transition-all cursor-default group">
+        <div class="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+          <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+        <h3 class="font-bold text-lg mb-2">Умный поиск</h3>
+        <p class="text-gray-500 text-sm leading-relaxed">Фильтрация по городу, категории, навыкам и зарплате. Находи то, что подходит именно тебе.</p>
+      </div>
+      <div class="p-6 rounded-2xl border border-gray-200 hover:border-purple-300 hover:shadow-lg transition-all cursor-default group">
+        <div class="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-purple-200 transition-colors">
+          <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <h3 class="font-bold text-lg mb-2">AI Помощник</h3>
+        <p class="text-gray-500 text-sm leading-relaxed">Анализ профиля, сопроводительные письма, подготовка к интервью — всё с помощью ИИ.</p>
+      </div>
+      <div class="p-6 rounded-2xl border border-gray-200 hover:border-green-300 hover:shadow-lg transition-all cursor-default group">
+        <div class="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-green-200 transition-colors">
+          <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <h3 class="font-bold text-lg mb-2">Трекинг заявок</h3>
+        <p class="text-gray-500 text-sm leading-relaxed">Отслеживай статус откликов в реальном времени. Никогда не пропускай обновления.</p>
+      </div>
+    </div>
+
+    <!-- Role cards -->
+    <div class="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div onclick="showAuth('student')" class="p-6 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 text-white cursor-pointer hover:shadow-xl transition-all hover:-translate-y-1">
+        <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg>
+        </div>
+        <h3 class="font-bold text-lg mb-1">Для студентов</h3>
+        <p class="text-white/70 text-sm">Ищи стажировки, создавай профиль и получай оферы от лучших компаний →</p>
+      </div>
+      <div onclick="showAuth('company')" class="p-6 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 text-white cursor-pointer hover:shadow-xl transition-all hover:-translate-y-1">
+        <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+        </div>
+        <h3 class="font-bold text-lg mb-1">Для компаний</h3>
+        <p class="text-white/70 text-sm">Публикуй стажировки, управляй кандидатами и нанимай таланты →</p>
+      </div>
+      <div onclick="showAuth('university')" class="p-6 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-700 text-white cursor-pointer hover:shadow-xl transition-all hover:-translate-y-1">
+        <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/></svg>
+        </div>
+        <h3 class="font-bold text-lg mb-1">Для университетов</h3>
+        <p class="text-white/70 text-sm">Отслеживай трудоустройство студентов и анализируй статистику →</p>
+      </div>
+    </div>
+  </div>
+
+  <footer class="border-t border-gray-200 bg-white py-8">
+    <div class="max-w-6xl mx-auto px-6 text-center text-sm text-gray-400">
+      © 2025 Qadam · Платформа стажировок Казахстана
+    </div>
+  </footer>
+</div>
+
+<!-- ─── AUTH ─── -->
+<div id="view-auth" class="view hidden min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
+  <div class="w-full max-w-md">
+    <div class="text-center mb-8">
+      <span class="text-primary font-black text-3xl">Qadam</span>
+      <p class="text-gray-400 mt-2 text-sm">Войдите или зарегистрируйтесь</p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+      <!-- Type selector -->
+      <div class="flex rounded-xl bg-gray-100 p-1 mb-6 gap-1">
+        <button onclick="setAuthType('student')" id="tab-student" class="auth-tab flex-1 py-2 text-sm font-semibold rounded-lg transition cursor-pointer">Студент</button>
+        <button onclick="setAuthType('company')" id="tab-company" class="auth-tab flex-1 py-2 text-sm font-semibold rounded-lg transition cursor-pointer">Компания</button>
+        <button onclick="setAuthType('university')" id="tab-university" class="auth-tab flex-1 py-2 text-sm font-semibold rounded-lg transition cursor-pointer">Университет</button>
+      </div>
+      <!-- Login / Register -->
+      <div class="flex border-b border-gray-200 mb-6">
+        <button onclick="setAuthMode('login')" id="mode-login" class="flex-1 pb-3 text-sm font-semibold border-b-2 transition cursor-pointer">Вход</button>
+        <button onclick="setAuthMode('register')" id="mode-register" class="flex-1 pb-3 text-sm font-semibold border-b-2 transition cursor-pointer">Регистрация</button>
+      </div>
+      <!-- Register extras -->
+      <div id="register-student-extra" class="hidden space-y-3 mb-3">
+        <div class="grid grid-cols-2 gap-3">
+          <input id="r-firstname" type="text" placeholder="Имя" class="field">
+          <input id="r-lastname" type="text" placeholder="Фамилия" class="field">
+        </div>
+      </div>
+      <div id="register-name-extra" class="hidden mb-3">
+        <input id="r-name" type="text" placeholder="Название" class="field w-full">
+      </div>
+      <div id="register-company-extra" class="hidden mb-3">
+        <input id="r-industry" type="text" placeholder="Индустрия (IT, Finance…)" class="field w-full">
+      </div>
+      <div id="register-city-extra" class="hidden mb-3">
+        <input id="r-city" type="text" placeholder="Город" class="field w-full">
+      </div>
+      <!-- Common -->
+      <div class="space-y-3">
+        <input id="auth-email" type="email" placeholder="Email" class="field w-full">
+        <input id="auth-password" type="password" placeholder="Пароль" class="field w-full">
+      </div>
+      <div id="auth-error" class="hidden mt-3 px-4 py-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-200"></div>
+      <button onclick="handleAuth()" id="auth-btn" class="mt-5 w-full py-3.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark transition cursor-pointer text-sm disabled:opacity-60">Войти</button>
+      <p id="wake-hint" class="hidden mt-3 text-xs text-center text-gray-400 animate-pulse">Сервер просыпается, подождите ~30 сек…</p>
+      <button onclick="showView('landing')" class="mt-4 w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition cursor-pointer">← Назад</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── STUDENT FEED ─── -->
+<div id="view-student-feed" class="view hidden pt-14">
+  <div class="max-w-6xl mx-auto px-4 py-6">
+    <div class="flex flex-col lg:flex-row gap-6">
+      <!-- Sidebar -->
+      <aside class="lg:w-60 shrink-0">
+        <div class="bg-white rounded-2xl border border-gray-200 p-5 sticky top-20">
+          <h3 class="font-bold text-sm text-gray-700 mb-4">Фильтры</h3>
+          <div class="space-y-3">
+            <input id="filter-search" oninput="filterInternships()" type="text" placeholder="Поиск…" class="field w-full text-sm">
+            <select id="filter-city" onchange="filterInternships()" class="field w-full text-sm bg-white cursor-pointer">
+              <option value="">Все города</option>
+              <option>Алматы</option><option>Астана</option><option>Шымкент</option><option>Актобе</option><option>Атырау</option>
+            </select>
+            <select id="filter-category" onchange="filterInternships()" class="field w-full text-sm bg-white cursor-pointer">
+              <option value="">Все категории</option>
+              <option>IT</option><option>Finance</option><option>Marketing</option><option>Design</option><option>HR</option><option>Engineering</option><option>Legal</option>
+            </select>
+            <button onclick="resetFilters()" class="w-full py-2 text-sm text-primary font-semibold hover:bg-primary/5 rounded-xl transition cursor-pointer">Сбросить</button>
+          </div>
+        </div>
+      </aside>
+      <!-- Feed -->
+      <main class="flex-1 min-w-0">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-bold">Стажировки</h2>
+          <span id="feed-count" class="text-sm text-gray-400 font-medium"></span>
+        </div>
+        <div id="feed-loading" class="space-y-3">
+          <div class="skeleton h-32 rounded-2xl"></div>
+          <div class="skeleton h-32 rounded-2xl"></div>
+          <div class="skeleton h-32 rounded-2xl"></div>
+          <div class="skeleton h-32 rounded-2xl"></div>
+        </div>
+        <div id="feed-list" class="space-y-3"></div>
+      </main>
+    </div>
+  </div>
+</div>
+
+<!-- ─── STUDENT PROFILE ─── -->
+<div id="view-student-profile" class="view hidden pt-14">
+  <div class="max-w-3xl mx-auto px-4 py-6 space-y-4">
+    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div class="h-28 bg-gradient-to-r from-primary to-purple-600"></div>
+      <div class="px-6 pb-6">
+        <div class="flex items-end justify-between -mt-10 mb-4">
+          <div id="profile-avatar" class="w-20 h-20 rounded-2xl bg-gray-800 border-4 border-white flex items-center justify-center text-white text-2xl font-black"></div>
+          <div class="flex gap-2">
+            <span id="profile-open-badge" class="hidden px-3 py-1.5 bg-green-100 text-green-700 text-xs font-bold rounded-xl border border-green-200">Открыт к предложениям</span>
+          </div>
+        </div>
+        <h2 id="profile-name" class="text-xl font-black text-gray-900"></h2>
+        <p id="profile-email" class="text-sm text-gray-400 mt-0.5"></p>
+        <p id="profile-bio" class="text-sm text-gray-600 mt-3 leading-relaxed"></p>
+        <div id="profile-uni-row" class="hidden mt-3 flex items-center gap-2 text-sm text-gray-500">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"/></svg>
+          <span id="profile-uni-text"></span>
+        </div>
+        <div id="profile-portfolio-row" class="hidden mt-2 flex items-center gap-2 text-sm text-primary">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+          <a id="profile-portfolio-link" href="#" target="_blank" class="hover:underline truncate"></a>
+        </div>
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+      <h3 class="font-bold mb-3">Навыки</h3>
+      <div id="profile-skills" class="flex flex-wrap gap-2"></div>
+      <p id="profile-no-skills" class="text-sm text-gray-400">Навыки не указаны. Добавьте в мобильном приложении.</p>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+      <h3 class="font-bold mb-3">Резюме</h3>
+      <div id="profile-cv-section"></div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+      <h3 class="font-bold mb-3">Статистика</h3>
+      <div id="profile-stats" class="flex gap-8"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── STUDENT APPLICATIONS ─── -->
+<div id="view-student-applications" class="view hidden pt-14">
+  <div class="max-w-3xl mx-auto px-4 py-6">
+    <h2 class="text-xl font-bold mb-4">Мои заявки</h2>
+    <div class="flex gap-2 mb-5 overflow-x-auto pb-1">
+      <button onclick="filterApps('all')"      id="at-all"      class="app-tab shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-primary text-white cursor-pointer transition">Все</button>
+      <button onclick="filterApps('pending')"  id="at-pending"  class="app-tab shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 cursor-pointer transition">В ожидании</button>
+      <button onclick="filterApps('accepted')" id="at-accepted" class="app-tab shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 cursor-pointer transition">Принято</button>
+      <button onclick="filterApps('rejected')" id="at-rejected" class="app-tab shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 cursor-pointer transition">Отказано</button>
+      <button onclick="filterApps('interview')" id="at-interview" class="app-tab shrink-0 px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 cursor-pointer transition">Интервью</button>
+    </div>
+    <div id="apps-loading" class="space-y-3">
+      <div class="skeleton h-24 rounded-2xl"></div>
+      <div class="skeleton h-24 rounded-2xl"></div>
+      <div class="skeleton h-24 rounded-2xl"></div>
+    </div>
+    <div id="apps-list" class="space-y-3"></div>
+  </div>
+</div>
+
+<!-- ─── AI CHAT ─── -->
+<div id="view-ai-chat" class="view hidden pt-14">
+  <div class="max-w-3xl mx-auto px-4 flex flex-col" style="height:calc(100vh - 3.5rem)">
+    <div class="py-4 border-b border-gray-200">
+      <h2 class="font-bold text-lg">AI Помощник</h2>
+      <p class="text-xs text-gray-400 mt-0.5">Powered by Groq · llama-3.3-70b</p>
+    </div>
+    <div id="chat-messages" class="flex-1 overflow-y-auto py-4 space-y-4 pr-1">
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shrink-0">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-700 max-w-md leading-relaxed shadow-sm">
+          Привет! Я AI помощник Qadam. Могу помочь найти подходящую стажировку, написать сопроводительное письмо или подготовить тебя к интервью. Что тебя интересует?
+        </div>
+      </div>
+    </div>
+    <div class="py-4 border-t border-gray-200">
+      <div class="flex gap-3">
+        <input id="chat-input" type="text" placeholder="Напиши сообщение…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}" class="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
+        <button onclick="sendMessage()" id="chat-send-btn" class="px-4 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+        </button>
+      </div>
+      <div class="flex flex-wrap gap-2 mt-3">
+        <button onclick="quickChat('Помоги написать сопроводительное письмо')" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-medium cursor-pointer transition">Сопроводительное письмо</button>
+        <button onclick="quickChat('Как подготовиться к интервью?')" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-medium cursor-pointer transition">Подготовка к интервью</button>
+        <button onclick="quickChat('Какие навыки нужны для IT стажировки?')" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-medium cursor-pointer transition">Навыки для IT</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── COMPANY DASHBOARD ─── -->
+<div id="view-company-dashboard" class="view hidden pt-14">
+  <div class="max-w-6xl mx-auto px-4 py-6">
+    <div class="mb-6">
+      <h2 class="text-xl font-bold">Дэшборд</h2>
+      <p id="company-header-name" class="text-sm text-gray-400 mt-0.5"></p>
+    </div>
+    <div id="company-stats-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold">Последние заявки</h3>
+        <button onclick="showView('company-applicants')" class="text-sm text-primary font-semibold hover:underline cursor-pointer">Все →</button>
+      </div>
+      <div id="dash-apps-loading" class="space-y-2">
+        <div class="skeleton h-14 rounded-xl"></div>
+        <div class="skeleton h-14 rounded-xl"></div>
+        <div class="skeleton h-14 rounded-xl"></div>
+      </div>
+      <div id="dash-apps-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── COMPANY INTERNSHIPS ─── -->
+<div id="view-company-internships" class="view hidden pt-14">
+  <div class="max-w-5xl mx-auto px-4 py-6">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-xl font-bold">Мои стажировки</h2>
+      <button onclick="openInternshipForm(null)" class="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition cursor-pointer text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Добавить
+      </button>
+    </div>
+    <div id="ci-loading" class="space-y-3">
+      <div class="skeleton h-28 rounded-2xl"></div>
+      <div class="skeleton h-28 rounded-2xl"></div>
+    </div>
+    <div id="ci-list" class="space-y-3"></div>
+  </div>
+</div>
+
+<!-- ─── COMPANY APPLICANTS ─── -->
+<div id="view-company-applicants" class="view hidden pt-14">
+  <div class="max-w-5xl mx-auto px-4 py-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-bold">Кандидаты</h2>
+      <input id="app-search" oninput="filterApplicants()" type="text" placeholder="Поиск по имени…" class="field w-56 text-sm">
+    </div>
+    <div id="ca-loading" class="space-y-3">
+      <div class="skeleton h-20 rounded-2xl"></div>
+      <div class="skeleton h-20 rounded-2xl"></div>
+      <div class="skeleton h-20 rounded-2xl"></div>
+    </div>
+    <div id="ca-list" class="space-y-3"></div>
+  </div>
+</div>
+
+<!-- ─── UNIVERSITY STUDENTS ─── -->
+<div id="view-uni-students" class="view hidden pt-14">
+  <div class="max-w-5xl mx-auto px-4 py-6">
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <h2 class="text-xl font-bold">Студенты</h2>
+        <p id="uni-header-name" class="text-sm text-gray-400 mt-0.5"></p>
+      </div>
+      <button onclick="openLinkStudentModal()" class="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition cursor-pointer text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Добавить студента
+      </button>
+    </div>
+    <input id="uni-search" oninput="filterUniStudents()" type="text" placeholder="Поиск по имени или email…" class="field w-full mb-4">
+    <div id="us-loading" class="space-y-3">
+      <div class="skeleton h-20 rounded-2xl"></div>
+      <div class="skeleton h-20 rounded-2xl"></div>
+      <div class="skeleton h-20 rounded-2xl"></div>
+    </div>
+    <div id="us-list" class="space-y-3"></div>
+  </div>
+</div>
+
+<!-- ─── UNIVERSITY ANALYTICS ─── -->
+<div id="view-uni-analytics" class="view hidden pt-14">
+  <div class="max-w-5xl mx-auto px-4 py-6">
+    <h2 class="text-xl font-bold mb-6">Аналитика</h2>
+    <div id="ua-loading" class="space-y-4">
+      <div class="skeleton h-32 rounded-2xl"></div>
+      <div class="skeleton h-48 rounded-2xl"></div>
+    </div>
+    <div id="ua-content" class="space-y-4"></div>
+  </div>
+</div>
+
+</div><!-- /views -->
+
+<!-- ══════════════════ MODALS ══════════════════ -->
+
+<!-- Internship detail -->
+<div id="modal-internship" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4 overflow-y-auto">
+  <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto fade-in shadow-2xl">
+    <div id="modal-internship-content"></div>
+  </div>
+</div>
+
+<!-- Internship form -->
+<div id="modal-form" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4">
+  <div class="bg-white rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto fade-in shadow-2xl">
+    <div class="p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h3 id="form-title" class="text-lg font-bold">Добавить стажировку</h3>
+        <button onclick="closeModal('modal-form')" class="w-8 h-8 rounded-xl hover:bg-gray-100 flex items-center justify-center cursor-pointer">
+          <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="space-y-3">
+        <input id="f-title"  type="text"    placeholder="Название стажировки *" class="field w-full">
+        <textarea id="f-desc" rows="3"      placeholder="Описание обязанностей"  class="field w-full resize-none"></textarea>
+        <div class="grid grid-cols-2 gap-3">
+          <input id="f-city" type="text"    placeholder="Город" class="field">
+          <select id="f-category"           class="field bg-white cursor-pointer">
+            <option>IT</option><option>Finance</option><option>Marketing</option><option>Design</option><option>HR</option><option>Engineering</option><option>Legal</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <input id="f-salary" type="number" placeholder="Зарплата (₸)" class="field">
+          <select id="f-type"               class="field bg-white cursor-pointer">
+            <option value="full_time">Full-time</option>
+            <option value="part_time">Part-time</option>
+            <option value="remote">Remote</option>
+          </select>
+        </div>
+        <input id="f-skills" type="text"   placeholder="Навыки: Python, SQL, Figma…" class="field w-full">
+        <div id="f-error" class="hidden px-4 py-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-200"></div>
+        <button onclick="submitForm()" id="f-btn" class="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark transition cursor-pointer text-sm">Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Link student -->
+<div id="modal-link" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl w-full max-w-sm p-6 fade-in shadow-2xl">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-bold text-lg">Добавить студента</h3>
+      <button onclick="closeModal('modal-link')" class="w-8 h-8 rounded-xl hover:bg-gray-100 flex items-center justify-center cursor-pointer">
+        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="space-y-3">
+      <input id="ls-email"   type="email" placeholder="Email студента *"  class="field w-full">
+      <input id="ls-spec"    type="text"  placeholder="Специальность"     class="field w-full">
+      <input id="ls-studid"  type="text"  placeholder="Номер зачётки"     class="field w-full">
+      <div id="ls-error" class="hidden px-4 py-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-200"></div>
+      <button onclick="linkStudent()" id="ls-btn" class="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark transition cursor-pointer text-sm">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="hidden fixed bottom-5 right-5 z-50">
+  <div id="toast-inner" class="bg-gray-900 text-white px-4 py-3 rounded-xl text-sm font-medium shadow-xl fade-in max-w-xs"></div>
+</div>
+
+<style>
+  .field { padding: 0.75rem 1rem; border: 1px solid #e5e7eb; border-radius: 0.75rem; font-size: 0.875rem; transition: border-color 0.15s, box-shadow 0.15s; outline: none; }
+  .field:focus { border-color: #2164F3; box-shadow: 0 0 0 3px rgba(33,100,243,0.12); }
+</style>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════
+const API = 'https://qadam-backend.onrender.com';
+
+const S = {
+  userType: null, token: null,
+  user: null, company: null, university: null,
+  internships: [], filteredInternships: [],
+  applications: [], companyApplications: [],
+  companyInternships: [], uniStudents: [],
+  chatHistory: [], chatConversationId: null,
+  editingId: null,
+  appsFilter: 'all',
+};
+
+// ══════════════════════════════════════════════════════════
+// BOOTSTRAP
+// ══════════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem('qadam') || 'null');
+    if (saved?.token) {
+      Object.assign(S, saved);
+      applyNavbar();
+      const first = S.userType === 'student' ? 'student-feed'
+                  : S.userType === 'company' ? 'company-dashboard' : 'uni-students';
+      showView(first);
+      return;
+    }
+  } catch {}
+  showView('landing');
+  setAuthMode('login');
+  setAuthType('student');
+});
+
+function persist() {
+  localStorage.setItem('qadam', JSON.stringify({
+    userType: S.userType, token: S.token,
+    user: S.user, company: S.company, university: S.university,
+  }));
+}
+
+// ══════════════════════════════════════════════════════════
+// VIEW ROUTER
+// ══════════════════════════════════════════════════════════
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+  const el = document.getElementById('view-' + name);
+  if (el) { el.classList.remove('hidden'); el.classList.add('fade-in'); }
+
+  const noNav = name === 'landing' || name === 'auth';
+  document.getElementById('navbar').classList.toggle('hidden', noNav);
+
+  updateNavHighlight(name);
+
+  if (name === 'student-feed')         loadFeed();
+  if (name === 'student-profile')      renderProfile();
+  if (name === 'student-applications') loadApplications();
+  if (name === 'company-dashboard')    loadDashboard();
+  if (name === 'company-internships')  loadCompanyInternships();
+  if (name === 'company-applicants')   loadApplicants();
+  if (name === 'uni-students')         loadUniStudents();
+  if (name === 'uni-analytics')        loadUniAnalytics();
+}
+
+function updateNavHighlight(view) {
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    const active = b.dataset.view === view;
+    b.classList.toggle('bg-primary/10', active);
+    b.classList.toggle('text-primary',  active);
+    b.classList.toggle('font-semibold', active);
+  });
+}
+
+function applyNavbar() {
+  ['student','company','university'].forEach(t =>
+    document.getElementById('nav-' + t).classList.toggle('hidden', S.userType !== t));
+  document.getElementById('logout-btn').classList.remove('hidden');
+  if (S.userType === 'student') {
+    document.getElementById('profile-btn').classList.remove('hidden');
+    document.getElementById('profile-btn').onclick = () => showView('student-profile');
+  }
+  if (S.userType === 'university') {
+    const name = S.university?.name || '';
+    const el = document.getElementById('uni-header-name');
+    if (el) el.textContent = name;
+  }
+}
+
+function logout() {
+  Object.keys(S).forEach(k => {
+    S[k] = Array.isArray(S[k]) ? [] : null;
+  });
+  S.appsFilter = 'all';
+  localStorage.removeItem('qadam');
+  ['student','company','university'].forEach(t =>
+    document.getElementById('nav-' + t).classList.add('hidden'));
+  document.getElementById('profile-btn').classList.add('hidden');
+  document.getElementById('logout-btn').classList.add('hidden');
+  showView('landing');
+}
+
+// ══════════════════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════════════════
+let authType = 'student';
+let authMode = 'login';
+
+function showAuth(type) { setAuthType(type); showView('auth'); }
+
+function setAuthType(t) {
+  authType = t;
+  ['student','company','university'].forEach(id => {
+    const btn = document.getElementById('tab-' + id);
+    if (id === t) btn.classList.add('bg-white','shadow-sm','text-primary');
+    else { btn.classList.remove('bg-white','shadow-sm','text-primary'); btn.classList.add('text-gray-500'); }
+  });
+  syncExtras();
+}
+
+function setAuthMode(m) {
+  authMode = m;
+  const lBtn = document.getElementById('mode-login');
+  const rBtn = document.getElementById('mode-register');
+  const aBtn = document.getElementById('auth-btn');
+  if (m === 'login') {
+    lBtn.className = 'flex-1 pb-3 text-sm font-semibold border-b-2 border-primary text-primary transition cursor-pointer';
+    rBtn.className = 'flex-1 pb-3 text-sm font-semibold border-b-2 border-transparent text-gray-400 transition cursor-pointer';
+    aBtn.textContent = 'Войти';
+  } else {
+    rBtn.className = 'flex-1 pb-3 text-sm font-semibold border-b-2 border-primary text-primary transition cursor-pointer';
+    lBtn.className = 'flex-1 pb-3 text-sm font-semibold border-b-2 border-transparent text-gray-400 transition cursor-pointer';
+    aBtn.textContent = 'Зарегистрироваться';
+  }
+  syncExtras();
+}
+
+function syncExtras() {
+  const reg = authMode === 'register';
+  document.getElementById('register-student-extra').classList.toggle('hidden', !(reg && authType === 'student'));
+  document.getElementById('register-name-extra').classList.toggle('hidden', !(reg && (authType === 'company' || authType === 'university')));
+  document.getElementById('register-company-extra').classList.toggle('hidden', !(reg && authType === 'company'));
+  document.getElementById('register-city-extra').classList.toggle('hidden', !(reg && authType === 'university'));
+}
+
+async function handleAuth() {
+  const email = v('auth-email'), pass = v('auth-password');
+  if (!email || !pass) { setAuthErr('Введите email и пароль'); return; }
+  const btn = document.getElementById('auth-btn');
+  btn.disabled = true; btn.textContent = 'Подождите…';
+  document.getElementById('wake-hint').classList.remove('hidden');
+  document.getElementById('auth-error').classList.add('hidden');
+  try {
+    if (authMode === 'login') await doLogin(email, pass);
+    else await doRegister(email, pass);
+  } catch (e) { setAuthErr(e.message); }
+  finally {
+    btn.disabled = false;
+    btn.textContent = authMode === 'login' ? 'Войти' : 'Зарегистрироваться';
+    document.getElementById('wake-hint').classList.add('hidden');
+  }
+}
+
+async function doLogin(email, pass) {
+  let url, opts;
+  if (authType === 'student') {
+    url = '/auth/login';
+    opts = { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({username:email, password:pass}) };
+  } else {
+    url = authType === 'company' ? '/company/login' : '/university/login';
+    opts = { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, password:pass}) };
+  }
+  const res = await timedFetch(API + url, opts, 65000);
+  const d = await res.json();
+  if (!res.ok) throw new Error(d.detail || 'Ошибка входа');
+  S.token = d.access_token; S.userType = authType;
+  if (authType === 'student') S.user = d.user ?? d;
+  else if (authType === 'company') S.company = d.company;
+  else S.university = d.university;
+  persist(); applyNavbar();
+  const dest = authType === 'student' ? 'student-feed' : authType === 'company' ? 'company-dashboard' : 'uni-students';
+  showView(dest);
+}
+
+async function doRegister(email, pass) {
+  let url, body;
+  if (authType === 'student') {
+    const fn = v('r-firstname'), ln = v('r-lastname');
+    if (!fn || !ln) { throw new Error('Введите имя и фамилию'); }
+    url = '/auth/register';
+    body = { email, password: pass, first_name: fn, last_name: ln };
+  } else if (authType === 'company') {
+    const name = v('r-name');
+    if (!name) throw new Error('Введите название компании');
+    url = '/company/register';
+    body = { email, password: pass, name, industry: v('r-industry') };
+  } else {
+    const name = v('r-name');
+    if (!name) throw new Error('Введите название университета');
+    url = '/university/register';
+    body = { email, password: pass, name, city: v('r-city') };
+  }
+  const res = await timedFetch(API + url, { method:'POST', headers:jsonH(), body: JSON.stringify(body) }, 65000);
+  const d = await res.json();
+  if (!res.ok) throw new Error(d.detail || 'Ошибка регистрации');
+  S.token = d.access_token; S.userType = authType;
+  if (authType === 'student') S.user = d.user ?? d;
+  else if (authType === 'company') S.company = d.company;
+  else S.university = d.university;
+  persist(); applyNavbar();
+  const dest = authType === 'student' ? 'student-feed' : authType === 'company' ? 'company-dashboard' : 'uni-students';
+  showView(dest);
+}
+
+function setAuthErr(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg; el.classList.remove('hidden');
+}
+
+// ══════════════════════════════════════════════════════════
+// STUDENT — FEED
+// ══════════════════════════════════════════════════════════
+async function loadFeed() {
+  if (S.internships.length) { renderFeed(S.filteredInternships.length ? S.filteredInternships : S.internships); return; }
+  show('feed-loading'); hide('feed-list');
+  try {
+    const res = await apiFetch('/internships/');
+    const data = await res.json();
+    S.internships = Array.isArray(data) ? data : [];
+    S.filteredInternships = S.internships;
+    renderFeed(S.internships);
+  } catch { document.getElementById('feed-list').innerHTML = emptyState('Не удалось загрузить стажировки'); }
+  finally { hide('feed-loading'); show('feed-list'); }
+}
+
+function renderFeed(items) {
+  document.getElementById('feed-count').textContent = items.length + ' стажировок';
+  document.getElementById('feed-list').innerHTML = items.length
+    ? items.map(internshipCard).join('')
+    : emptyState('Ничего не найдено по фильтрам');
+}
+
+function internshipCard(i) {
+  const catColors = { IT:'bg-blue-100 text-blue-700', Finance:'bg-green-100 text-green-700', Marketing:'bg-yellow-100 text-yellow-700', Design:'bg-purple-100 text-purple-700', HR:'bg-pink-100 text-pink-700', Engineering:'bg-orange-100 text-orange-700', Legal:'bg-indigo-100 text-indigo-700' };
+  const cc = catColors[i.category] || 'bg-gray-100 text-gray-600';
+  const co = i.company_name || i.company || '?';
+  const skills = (i.required_skills || []).slice(0,4).join(', ');
+  return `<div onclick="openInternship(${i.id})" class="bg-white rounded-2xl border border-gray-200 p-5 hover:border-primary/40 hover:shadow-md transition-all cursor-pointer group">
+    <div class="flex items-start justify-between gap-4">
+      <div class="flex items-start gap-4 flex-1 min-w-0">
+        <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg shrink-0 group-hover:bg-primary/20 transition-colors">${esc(co[0].toUpperCase())}</div>
+        <div class="min-w-0 flex-1">
+          <h3 class="font-bold text-gray-900 truncate group-hover:text-primary transition-colors">${esc(i.title)}</h3>
+          <p class="text-sm text-gray-500 mt-0.5 truncate">${esc(co)}</p>
+          <div class="flex flex-wrap items-center gap-2 mt-2">
+            <span class="px-2.5 py-1 rounded-lg text-xs font-semibold ${cc}">${esc(i.category||'')}</span>
+            ${i.city ? `<span class="text-xs text-gray-400 flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>${esc(i.city)}</span>` : ''}
+            ${i.salary ? `<span class="text-xs font-semibold text-green-600">${Number(i.salary).toLocaleString()} ₸</span>` : ''}
+          </div>
+          ${skills ? `<p class="text-xs text-gray-400 mt-1.5 truncate">${esc(skills)}</p>` : ''}
+        </div>
+      </div>
+      <svg class="w-5 h-5 text-gray-300 group-hover:text-primary transition-colors shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    </div>
+  </div>`;
+}
+
+function filterInternships() {
+  const q = v('filter-search').toLowerCase();
+  const city = v('filter-city'), cat = v('filter-category');
+  S.filteredInternships = S.internships.filter(i => {
+    const text = `${i.title} ${i.company_name||i.company||''} ${i.description||''}`.toLowerCase();
+    return (!q || text.includes(q)) && (!city || i.city === city) && (!cat || i.category === cat);
+  });
+  renderFeed(S.filteredInternships);
+}
+
+function resetFilters() {
+  ['filter-search','filter-city','filter-category'].forEach(id => document.getElementById(id).value = '');
+  S.filteredInternships = S.internships;
+  renderFeed(S.internships);
+}
+
+async function openInternship(id) {
+  const i = S.internships.find(x => x.id === id); if (!i) return;
+  const skills = (i.required_skills||[]).map(s=>`<span class="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">${esc(s)}</span>`).join('');
+  document.getElementById('modal-internship-content').innerHTML = `
+    <div class="p-6">
+      <div class="flex items-start justify-between gap-4 mb-5">
+        <div class="flex items-start gap-4">
+          <div class="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-xl shrink-0">${esc((i.company_name||i.company||'?')[0].toUpperCase())}</div>
+          <div><h2 class="text-xl font-black text-gray-900">${esc(i.title)}</h2><p class="text-gray-500 mt-0.5">${esc(i.company_name||i.company||'')}</p></div>
+        </div>
+        <button onclick="closeModal('modal-internship')" class="w-9 h-9 rounded-xl hover:bg-gray-100 flex items-center justify-center cursor-pointer shrink-0">
+          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="flex flex-wrap gap-3 mb-5">
+        ${i.city ? `<span class="flex items-center gap-1.5 text-sm text-gray-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>${esc(i.city)}</span>` : ''}
+        ${i.salary ? `<span class="text-sm font-bold text-green-600">${Number(i.salary).toLocaleString()} ₸/мес</span>` : ''}
+        ${i.employment_type ? `<span class="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium">${esc(i.employment_type)}</span>` : ''}
+      </div>
+      ${i.description ? `<div class="mb-5"><h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Описание</h4><p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">${esc(i.description)}</p></div>` : ''}
+      ${skills ? `<div class="mb-6"><h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Требуемые навыки</h4><div class="flex flex-wrap gap-2">${skills}</div></div>` : ''}
+      ${S.userType === 'student' ? `<button onclick="applyTo(${i.id})" id="apply-${i.id}" class="w-full py-3.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark transition cursor-pointer text-sm">Откликнуться</button>` : ''}
+    </div>`;
+  document.getElementById('modal-internship').classList.remove('hidden');
+  document.getElementById('modal-internship').onclick = e => { if (e.target.id === 'modal-internship') closeModal('modal-internship'); };
+}
+
+async function applyTo(id) {
+  const btn = document.getElementById('apply-' + id); if (!btn) return;
+  btn.disabled = true; btn.textContent = 'Отправляем…';
+  try {
+    const res = await apiFetch('/applications/', { method:'POST', body: JSON.stringify({ internship_id: id }) });
+    if (res.ok) {
+      btn.textContent = '✓ Заявка отправлена';
+      btn.className = 'w-full py-3.5 bg-green-500 text-white font-bold rounded-xl cursor-default text-sm';
+      toast('Заявка отправлена успешно!');
+      S.applications = []; // invalidate cache
+    } else {
+      const d = await res.json();
+      btn.disabled = false; btn.textContent = 'Откликнуться';
+      toast(d.detail || 'Ошибка', 'error');
+    }
+  } catch { btn.disabled = false; btn.textContent = 'Откликнуться'; toast('Ошибка сети', 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════
+// STUDENT — PROFILE
+// ══════════════════════════════════════════════════════════
+async function renderProfile() {
+  const u = S.user; if (!u) return;
+  const name = u.name || [(u.first_name||''),(u.last_name||'')].join(' ').trim() || 'Без имени';
+  const initials = name.split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase() || '?';
+  document.getElementById('profile-avatar').textContent = initials;
+  document.getElementById('profile-name').textContent = name;
+  document.getElementById('profile-email').textContent = u.email || '';
+  document.getElementById('profile-bio').textContent = u.bio || '';
+
+  if (u.open_to_work) document.getElementById('profile-open-badge').classList.remove('hidden');
+
+  if (u.university_name) {
+    document.getElementById('profile-uni-row').classList.remove('hidden');
+    document.getElementById('profile-uni-text').textContent = [u.university_name, u.specialty].filter(Boolean).join(' · ');
+  }
+  if (u.portfolio_url) {
+    document.getElementById('profile-portfolio-row').classList.remove('hidden');
+    const a = document.getElementById('profile-portfolio-link');
+    a.href = u.portfolio_url; a.textContent = u.portfolio_url;
+  }
+
+  const skills = u.skills || [];
+  if (skills.length) {
+    document.getElementById('profile-no-skills').classList.add('hidden');
+    document.getElementById('profile-skills').innerHTML = skills.map(s =>
+      `<span class="px-3 py-1.5 bg-primary/10 text-primary rounded-xl text-sm font-medium">${esc(s)}</span>`).join('');
+  }
+
+  document.getElementById('profile-cv-section').innerHTML = u.cv_url
+    ? `<div class="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+        <div class="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        </div>
+        <div class="flex-1 min-w-0"><p class="text-sm font-semibold truncate">${esc(u.cv_filename||'resume.pdf')}</p></div>
+        <a href="${API}${u.cv_url}" target="_blank" class="px-3 py-1.5 text-sm text-primary font-semibold hover:bg-primary/10 rounded-lg transition cursor-pointer">Открыть</a>
+      </div>`
+    : `<p class="text-sm text-gray-400">CV не загружено. Загрузите в мобильном приложении.</p>`;
+
+  // Stats from applications
+  if (!S.applications.length) {
+    try {
+      const res = await apiFetch('/applications/my');
+      S.applications = await res.json();
+    } catch {}
+  }
+  const total = S.applications.length;
+  const accepted = S.applications.filter(a=>a.status==='accepted').length;
+  document.getElementById('profile-stats').innerHTML = `
+    <div class="text-center"><p class="text-2xl font-black text-primary">${total}</p><p class="text-xs text-gray-400 mt-0.5">Откликов</p></div>
+    <div class="text-center"><p class="text-2xl font-black text-green-600">${accepted}</p><p class="text-xs text-gray-400 mt-0.5">Принято</p></div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+// STUDENT — APPLICATIONS
+// ══════════════════════════════════════════════════════════
+async function loadApplications() {
+  show('apps-loading'); hide('apps-list');
+  try {
+    const res = await apiFetch('/applications/my');
+    S.applications = await res.json();
+    renderApps();
+  } catch { document.getElementById('apps-list').innerHTML = emptyState('Ошибка загрузки'); }
+  finally { hide('apps-loading'); show('apps-list'); }
+}
+
+function filterApps(f) {
+  S.appsFilter = f;
+  document.querySelectorAll('.app-tab').forEach(b => {
+    const active = b.id === 'at-' + f;
+    b.classList.toggle('bg-primary', active); b.classList.toggle('text-white', active);
+    b.classList.toggle('bg-gray-100', !active); b.classList.toggle('text-gray-600', !active);
+  });
+  renderApps();
+}
+
+function renderApps() {
+  const filtered = S.appsFilter === 'all' ? S.applications
+    : S.applications.filter(a => a.status === S.appsFilter);
+  const sm = { pending:{l:'Рассматривается',c:'bg-blue-100 text-blue-700'}, accepted:{l:'Принят',c:'bg-green-100 text-green-700'}, rejected:{l:'Отказано',c:'bg-red-100 text-red-700'}, interview:{l:'Интервью',c:'bg-purple-100 text-purple-700'}, offer:{l:'Оффер',c:'bg-yellow-100 text-yellow-700'} };
+  document.getElementById('apps-list').innerHTML = filtered.length
+    ? filtered.map(a => {
+        const s = sm[a.status] || sm.pending;
+        const dt = a.created_at ? new Date(a.created_at).toLocaleDateString('ru-RU',{day:'numeric',month:'short'}) : '';
+        return `<div class="bg-white rounded-2xl border border-gray-200 p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-start gap-4 flex-1 min-w-0">
+              <div class="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">${esc((a.company||'C')[0].toUpperCase())}</div>
+              <div class="min-w-0"><h4 class="font-bold text-gray-900 truncate">${esc(a.internship_title||'—')}</h4><p class="text-sm text-gray-500">${esc(a.company||'')}</p>${dt?`<p class="text-xs text-gray-400 mt-0.5">Подано ${dt}</p>`:''}</div>
+            </div>
+            <span class="shrink-0 px-2.5 py-1 rounded-xl text-xs font-semibold ${s.c}">${s.l}</span>
+          </div>
+        </div>`;
+      }).join('')
+    : emptyState('Нет заявок в этой категории');
+}
+
+// ══════════════════════════════════════════════════════════
+// AI CHAT
+// ══════════════════════════════════════════════════════════
+function quickChat(msg) { document.getElementById('chat-input').value = msg; sendMessage(); }
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim(); if (!msg) return;
+  input.value = '';
+  addMsg('user', msg);
+  document.getElementById('chat-send-btn').disabled = true;
+  S.chatHistory.push({ role:'user', content:msg });
+  const loader = addMsg('ai', '…', true);
+  try {
+    const body = { messages: S.chatHistory };
+    if (S.chatConversationId) body.conversation_id = S.chatConversationId;
+    const res = await apiFetch('/ai/chat', { method:'POST', body:JSON.stringify(body) });
+    const d = await res.json();
+    loader.remove();
+    if (res.ok) {
+      const reply = d.reply || d.message || '';
+      S.chatConversationId = d.conversation_id;
+      S.chatHistory.push({ role:'assistant', content:reply });
+      addMsg('ai', reply);
+    } else addMsg('ai', 'Ошибка: ' + (d.detail||'попробуйте ещё раз'));
+  } catch { loader.remove(); addMsg('ai', 'Ошибка сети. Проверьте подключение.'); }
+  finally { document.getElementById('chat-send-btn').disabled = false; }
+}
+
+function addMsg(role, text, pending=false) {
+  const c = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = `flex items-start gap-3 ${role==='user'?'justify-end':''}`;
+  if (role === 'user') {
+    div.innerHTML = `<div class="bg-primary text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm max-w-sm leading-relaxed">${esc(text)}</div>`;
+  } else {
+    div.innerHTML = `
+      <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shrink-0">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-700 max-w-md leading-relaxed shadow-sm">${pending?'<span class="animate-pulse text-gray-400">…</span>':esc(text).replace(/\n/g,'<br>')}</div>`;
+  }
+  c.appendChild(div);
+  c.scrollTop = c.scrollHeight;
+  return div;
+}
+
+// ══════════════════════════════════════════════════════════
+// COMPANY — DASHBOARD
+// ══════════════════════════════════════════════════════════
+async function loadDashboard() {
+  if (S.company) document.getElementById('company-header-name').textContent = S.company.name || '';
+  show('dash-apps-loading'); hide('dash-apps-list');
+  try {
+    const [sr, ar] = await Promise.all([apiFetch('/company/stats'), apiFetch('/company/applications')]);
+    const stats = await sr.json(), apps = await ar.json();
+    S.companyApplications = Array.isArray(apps) ? apps : [];
+    renderCompanyStats(stats);
+    renderDashApps(S.companyApplications.slice(0,5));
+  } catch { document.getElementById('dash-apps-list').innerHTML = '<p class="text-sm text-gray-400">Не удалось загрузить данные</p>'; }
+  finally { hide('dash-apps-loading'); show('dash-apps-list'); }
+}
+
+function renderCompanyStats(s) {
+  const items = [
+    {l:'Стажировок', v:s.internships_count??0, c:'text-primary', bg:'bg-primary/10'},
+    {l:'Заявок',     v:s.applications_count??0, c:'text-indigo-600', bg:'bg-indigo-50'},
+    {l:'Принято',    v:s.accepted_count??0, c:'text-green-600', bg:'bg-green-50'},
+    {l:'В ожидании', v:s.pending_count??0, c:'text-amber-600', bg:'bg-amber-50'},
+  ];
+  document.getElementById('company-stats-grid').innerHTML = items.map(i =>
+    `<div class="bg-white rounded-2xl border border-gray-200 p-5 hover:shadow-sm transition-shadow">
+      <p class="text-3xl font-black ${i.c} mb-1">${i.v}</p>
+      <p class="text-sm text-gray-500 font-medium">${i.l}</p>
+    </div>`).join('');
+}
+
+function renderDashApps(apps) {
+  document.getElementById('dash-apps-list').innerHTML = apps.length
+    ? apps.map(a => appRow(a)).join('')
+    : '<p class="text-sm text-gray-400">Заявок пока нет</p>';
+}
+
+function appRow(a) {
+  const sm = { pending:{l:'Ожидание',c:'bg-blue-100 text-blue-700'}, accepted:{l:'Принят',c:'bg-green-100 text-green-700'}, rejected:{l:'Отказано',c:'bg-red-100 text-red-700'}, interview:{l:'Интервью',c:'bg-purple-100 text-purple-700'}, offer:{l:'Оффер',c:'bg-yellow-100 text-yellow-700'} };
+  const s = sm[a.status] || sm.pending;
+  return `<div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-0 gap-3">
+    <div class="flex items-center gap-3 min-w-0">
+      <div class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-sm shrink-0">${esc((a.student_name||'S')[0].toUpperCase())}</div>
+      <div class="min-w-0"><p class="text-sm font-semibold text-gray-900 truncate">${esc(a.student_name||'Студент')}</p><p class="text-xs text-gray-400 truncate">${esc(a.internship_title||'—')}</p></div>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      <span class="px-2.5 py-1 rounded-lg text-xs font-semibold ${s.c}">${s.l}</span>
+      <select onchange="updateStatus(${a.id},this.value)" class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 cursor-pointer focus:outline-none focus:border-primary bg-white">
+        <option value="pending" ${a.status==='pending'?'selected':''}>Ожидание</option>
+        <option value="accepted" ${a.status==='accepted'?'selected':''}>Принять</option>
+        <option value="rejected" ${a.status==='rejected'?'selected':''}>Отказать</option>
+        <option value="interview" ${a.status==='interview'?'selected':''}>Интервью</option>
+        <option value="offer" ${a.status==='offer'?'selected':''}>Оффер</option>
+      </select>
+    </div>
+  </div>`;
+}
+
+async function updateStatus(appId, status) {
+  try {
+    const res = await apiFetch(`/company/applications/${appId}/status`, { method:'PUT', body:JSON.stringify({status}) });
+    if (res.ok) toast('Статус обновлён');
+    else toast('Ошибка', 'error');
+  } catch { toast('Ошибка сети', 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════
+// COMPANY — INTERNSHIPS
+// ══════════════════════════════════════════════════════════
+async function loadCompanyInternships() {
+  show('ci-loading'); hide('ci-list');
+  try {
+    const res = await apiFetch('/company/internships');
+    S.companyInternships = await res.json();
+    renderCI();
+  } catch { document.getElementById('ci-list').innerHTML = emptyState('Ошибка загрузки'); }
+  finally { hide('ci-loading'); show('ci-list'); }
+}
+
+function renderCI() {
+  const list = document.getElementById('ci-list');
+  if (!S.companyInternships.length) {
+    list.innerHTML = `<div class="text-center py-16"><p class="text-gray-400 mb-4">Стажировок ещё нет</p><button onclick="openInternshipForm(null)" class="px-5 py-2.5 bg-primary text-white font-semibold rounded-xl cursor-pointer hover:bg-primary-dark transition text-sm">Создать первую</button></div>`;
+    return;
+  }
+  list.innerHTML = S.companyInternships.map(i => `
+    <div class="bg-white rounded-2xl border border-gray-200 p-5 hover:border-primary/30 transition-colors">
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1 flex-wrap">
+            <h3 class="font-bold text-gray-900">${esc(i.title)}</h3>
+            <span class="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-medium">${esc(i.category||'')}</span>
+          </div>
+          <div class="flex flex-wrap gap-3 text-sm text-gray-500 mt-0.5">
+            ${i.city?`<span>${esc(i.city)}</span>`:''}
+            ${i.salary?`<span class="text-green-600 font-semibold">${Number(i.salary).toLocaleString()} ₸</span>`:''}
+            ${i.employment_type?`<span>${esc(i.employment_type)}</span>`:''}
+          </div>
+          ${i.description?`<p class="text-sm text-gray-400 mt-2 line-clamp-2">${esc(i.description)}</p>`:''}
+        </div>
+        <div class="flex gap-1 shrink-0">
+          <button onclick="openInternshipForm(${i.id})" class="p-2 hover:bg-gray-100 rounded-xl transition cursor-pointer" title="Редактировать">
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          </button>
+          <button onclick="deleteInternship(${i.id})" class="p-2 hover:bg-red-50 rounded-xl transition cursor-pointer" title="Удалить">
+            <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function openInternshipForm(id) {
+  S.editingId = id;
+  document.getElementById('form-title').textContent = id ? 'Редактировать стажировку' : 'Добавить стажировку';
+  document.getElementById('f-error').classList.add('hidden');
+  if (id) {
+    const ex = S.companyInternships.find(i=>i.id===id);
+    if (ex) {
+      sv('f-title', ex.title||''); sv('f-desc', ex.description||'');
+      sv('f-city', ex.city||''); sv('f-salary', ex.salary||'');
+      sv('f-skills', (ex.required_skills||[]).join(', '));
+      document.getElementById('f-category').value = ex.category||'IT';
+      document.getElementById('f-type').value = ex.employment_type||'full_time';
+    }
+  } else {
+    ['f-title','f-desc','f-city','f-salary','f-skills'].forEach(id => sv(id,''));
+  }
+  openModal('modal-form');
+}
+
+async function submitForm() {
+  const title = v('f-title');
+  if (!title) { fErr('f-error', 'Введите название'); return; }
+  const btn = document.getElementById('f-btn');
+  btn.disabled = true; btn.textContent = 'Сохраняем…';
+  const data = {
+    title, description:v('f-desc'), city:v('f-city'),
+    category:v('f-category'), employment_type:v('f-type'),
+    required_skills: v('f-skills').split(',').map(s=>s.trim()).filter(Boolean),
+  };
+  const sal = v('f-salary');
+  if (sal) data.salary = Number(sal);
+  try {
+    const url = S.editingId ? `/company/internships/${S.editingId}` : '/company/internships';
+    const method = S.editingId ? 'PUT' : 'POST';
+    const res = await apiFetch(url, { method, body:JSON.stringify(data) });
+    if (res.ok) {
+      closeModal('modal-form'); S.companyInternships = [];
+      loadCompanyInternships(); toast('Стажировка сохранена!');
+    } else { const d = await res.json(); fErr('f-error', d.detail||'Ошибка'); }
+  } catch { fErr('f-error', 'Ошибка сети'); }
+  finally { btn.disabled = false; btn.textContent = 'Сохранить'; }
+}
+
+async function deleteInternship(id) {
+  if (!confirm('Удалить эту стажировку?')) return;
+  const res = await apiFetch(`/company/internships/${id}`, { method:'DELETE' });
+  if (res.ok) {
+    S.companyInternships = S.companyInternships.filter(i=>i.id!==id);
+    renderCI(); toast('Удалено');
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// COMPANY — APPLICANTS
+// ══════════════════════════════════════════════════════════
+async function loadApplicants() {
+  show('ca-loading'); hide('ca-list');
+  try {
+    const res = await apiFetch('/company/applications');
+    S.companyApplications = await res.json();
+    renderApplicants(S.companyApplications);
+  } catch { document.getElementById('ca-list').innerHTML = emptyState('Ошибка загрузки'); }
+  finally { hide('ca-loading'); show('ca-list'); }
+}
+
+function filterApplicants() {
+  const q = v('app-search').toLowerCase();
+  const filtered = q ? S.companyApplications.filter(a=>(a.student_name||'').toLowerCase().includes(q)) : S.companyApplications;
+  renderApplicants(filtered);
+}
+
+function renderApplicants(apps) {
+  const sm = { pending:{l:'Ожидание',c:'bg-blue-100 text-blue-700'}, accepted:{l:'Принят',c:'bg-green-100 text-green-700'}, rejected:{l:'Отказано',c:'bg-red-100 text-red-700'}, interview:{l:'Интервью',c:'bg-purple-100 text-purple-700'}, offer:{l:'Оффер',c:'bg-yellow-100 text-yellow-700'} };
+  document.getElementById('ca-list').innerHTML = apps.length
+    ? apps.map(a => {
+        const s = sm[a.status]||sm.pending;
+        const skills = (a.student_skills||[]).slice(0,3).map(sk=>`<span class="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">${esc(sk)}</span>`).join('');
+        return `<div class="bg-white rounded-2xl border border-gray-200 p-5">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-lg shrink-0">${esc((a.student_name||'S')[0].toUpperCase())}</div>
+              <div>
+                <p class="font-bold text-gray-900">${esc(a.student_name||'Студент')}</p>
+                <p class="text-sm text-gray-400">${esc(a.student_email||'')}</p>
+                <p class="text-xs text-gray-400 mt-0.5">${esc(a.internship_title||'—')}</p>
+                ${skills?`<div class="flex flex-wrap gap-1 mt-2">${skills}</div>`:''}
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              ${a.cv_url?`<a href="${API}${a.cv_url}" target="_blank" class="flex items-center gap-1.5 px-3 py-2 text-sm text-primary font-semibold bg-primary/10 hover:bg-primary/20 rounded-xl transition cursor-pointer"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>CV</a>`:''}
+              <span class="px-3 py-1.5 rounded-xl text-xs font-bold ${s.c}">${s.l}</span>
+              <select onchange="updateStatus(${a.id},this.value)" class="text-sm border border-gray-200 rounded-xl px-3 py-2 cursor-pointer focus:outline-none focus:border-primary bg-white">
+                <option value="pending" ${a.status==='pending'?'selected':''}>Ожидание</option>
+                <option value="accepted" ${a.status==='accepted'?'selected':''}>Принять</option>
+                <option value="rejected" ${a.status==='rejected'?'selected':''}>Отказать</option>
+                <option value="interview" ${a.status==='interview'?'selected':''}>Интервью</option>
+                <option value="offer" ${a.status==='offer'?'selected':''}>Оффер</option>
+              </select>
+            </div>
+          </div>
+        </div>`;
+      }).join('')
+    : emptyState('Нет заявок');
+}
+
+// ══════════════════════════════════════════════════════════
+// UNIVERSITY — STUDENTS
+// ══════════════════════════════════════════════════════════
+async function loadUniStudents() {
+  if (S.university) document.getElementById('uni-header-name').textContent = S.university.name||'';
+  show('us-loading'); hide('us-list');
+  try {
+    const res = await apiFetch('/university/students');
+    S.uniStudents = await res.json();
+    renderUniStudents(S.uniStudents);
+  } catch { document.getElementById('us-list').innerHTML = emptyState('Ошибка загрузки'); }
+  finally { hide('us-loading'); show('us-list'); }
+}
+
+function filterUniStudents() {
+  const q = v('uni-search').toLowerCase();
+  const f = q ? S.uniStudents.filter(s=>`${s.name||''} ${s.email||''}`.toLowerCase().includes(q)) : S.uniStudents;
+  renderUniStudents(f);
+}
+
+function renderUniStudents(list) {
+  document.getElementById('us-list').innerHTML = list.length
+    ? list.map(s => `
+      <div class="bg-white rounded-2xl border border-gray-200 p-5">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-4 min-w-0">
+            <div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">${esc((s.name||'S')[0].toUpperCase())}</div>
+            <div class="min-w-0">
+              <p class="font-bold text-gray-900">${esc(s.name||'Студент')}</p>
+              <p class="text-sm text-gray-400">${esc(s.email||'')}</p>
+              ${s.specialty?`<p class="text-xs text-gray-400 mt-0.5">${esc(s.specialty)}${s.study_year?' · '+s.study_year+' курс':''}</p>`:''}
+              ${s.student_id_number?`<p class="text-xs text-gray-300">Зачётка: ${esc(s.student_id_number)}</p>`:''}
+            </div>
+          </div>
+          <div class="flex items-center gap-4 shrink-0">
+            <div class="text-center"><p class="font-black text-primary text-lg">${s.total_apps||0}</p><p class="text-xs text-gray-400">заявок</p></div>
+            <div class="text-center"><p class="font-black text-green-600 text-lg">${s.accepted||0}</p><p class="text-xs text-gray-400">принято</p></div>
+            <button onclick="unlinkStudent(${s.user_id})" class="p-2 hover:bg-red-50 rounded-xl transition cursor-pointer" title="Убрать из списка">
+              <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>`).join('')
+    : emptyState('Нет студентов. Нажмите «Добавить студента».');
+}
+
+function openLinkStudentModal() {
+  ['ls-email','ls-spec','ls-studid'].forEach(id=>sv(id,''));
+  document.getElementById('ls-error').classList.add('hidden');
+  openModal('modal-link');
+}
+
+async function linkStudent() {
+  const email = v('ls-email');
+  if (!email) { fErr('ls-error','Введите email'); return; }
+  const btn = document.getElementById('ls-btn');
+  btn.disabled = true; btn.textContent = 'Добавляем…';
+  try {
+    const res = await apiFetch('/university/students/link', { method:'POST', body:JSON.stringify({ student_email:email, specialty:v('ls-spec'), student_id_number:v('ls-studid') }) });
+    if (res.ok) {
+      closeModal('modal-link'); S.uniStudents = [];
+      loadUniStudents(); toast('Студент добавлен!');
+    } else { const d = await res.json(); fErr('ls-error', d.detail||'Студент не найден'); }
+  } catch { fErr('ls-error','Ошибка сети'); }
+  finally { btn.disabled=false; btn.textContent='Добавить'; }
+}
+
+async function unlinkStudent(userId) {
+  if (!confirm('Убрать этого студента из списка?')) return;
+  const res = await apiFetch(`/university/students/${userId}`, { method:'DELETE' });
+  if (res.ok) {
+    S.uniStudents = S.uniStudents.filter(s=>s.user_id!==userId);
+    renderUniStudents(S.uniStudents); toast('Студент удалён');
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// UNIVERSITY — ANALYTICS
+// ══════════════════════════════════════════════════════════
+async function loadUniAnalytics() {
+  show('ua-loading'); hide('ua-content');
+  try {
+    const res = await apiFetch('/university/analytics');
+    const d = await res.json();
+    renderAnalytics(d);
+  } catch { document.getElementById('ua-content').innerHTML = emptyState('Ошибка загрузки'); }
+  finally { hide('ua-loading'); show('ua-content'); }
+}
+
+function renderAnalytics(d) {
+  const rate = (d.acceptance_rate||0).toFixed(1);
+  const emp  = (d.employment_rate||0).toFixed(1);
+  const top  = (d.top_companies||[]).slice(0,5);
+  const cats = (d.by_category||[]).slice(0,6);
+
+  document.getElementById('ua-content').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      ${[{l:'Студентов',v:d.total_students||0,c:'text-primary'},{l:'Заявок',v:d.total_applications||0,c:'text-indigo-600'},{l:'Принято',v:d.accepted||0,c:'text-green-600'},{l:'Трудоустроено',v:d.students_employed||0,c:'text-amber-600'}]
+        .map(i=>`<div class="bg-white rounded-2xl border border-gray-200 p-5"><p class="text-3xl font-black ${i.c} mb-1">${i.v}</p><p class="text-sm text-gray-500 font-medium">${i.l}</p></div>`).join('')}
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-white rounded-2xl border border-gray-200 p-6">
+        <h3 class="font-bold mb-5">Ключевые показатели</h3>
+        <div class="space-y-5">
+          ${[{l:'Процент принятых',v:rate,c:'bg-primary'},{l:'Трудоустроенность',v:emp,c:'bg-green-500'}].map(r=>`
+            <div>
+              <div class="flex justify-between text-sm mb-2"><span class="text-gray-600">${r.l}</span><span class="font-bold">${r.v}%</span></div>
+              <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden"><div class="${r.c} h-full rounded-full transition-all" style="width:${Math.min(r.v,100)}%"></div></div>
+            </div>`).join('')}
+        </div>
+      </div>
+      ${top.length ? `
+      <div class="bg-white rounded-2xl border border-gray-200 p-6">
+        <h3 class="font-bold mb-4">Топ компании</h3>
+        <div class="space-y-3">
+          ${top.map((c,i)=>`
+            <div class="flex items-center gap-3">
+              <span class="w-7 h-7 rounded-lg bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">${i+1}</span>
+              <span class="flex-1 text-sm font-medium text-gray-800 truncate">${esc(c.company||c.name||'')}</span>
+              <span class="text-sm font-bold text-gray-400 shrink-0">${c.count}</span>
+            </div>`).join('')}
+        </div>
+      </div>` : ''}
+    </div>
+    ${cats.length ? `
+    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+      <h3 class="font-bold mb-4">По категориям</h3>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+        ${cats.map(c=>`<div class="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition"><p class="text-sm font-semibold text-gray-900">${esc(c.category||'—')}</p><p class="text-2xl font-black text-primary mt-1">${c.count}</p></div>`).join('')}
+      </div>
+    </div>` : ''}`;
+}
+
+// ══════════════════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════════════════
+function apiFetch(path, opts={}) {
+  const headers = { 'Content-Type':'application/json', ...(opts.headers||{}) };
+  if (S.token) headers['Authorization'] = `Bearer ${S.token}`;
+  return fetch(API + path, { ...opts, headers });
+}
+async function timedFetch(url, opts, ms) {
+  const c = new AbortController();
+  const t = setTimeout(()=>c.abort(), ms);
+  try { return await fetch(url, {...opts, signal:c.signal}); }
+  finally { clearTimeout(t); }
+}
+function jsonH() { return {'Content-Type':'application/json'}; }
+
+function openModal(id) {
+  const m = document.getElementById(id);
+  m.classList.remove('hidden');
+  m.addEventListener('click', function handler(e) { if (e.target===m) { closeModal(id); m.removeEventListener('click',handler); } });
+}
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+let _toastT;
+function toast(msg, type='success') {
+  const el = document.getElementById('toast-inner');
+  el.textContent = msg;
+  el.className = `${type==='error'?'bg-red-600':'bg-gray-900'} text-white px-4 py-3 rounded-xl text-sm font-medium shadow-xl fade-in`;
+  document.getElementById('toast').classList.remove('hidden');
+  clearTimeout(_toastT);
+  _toastT = setTimeout(()=>document.getElementById('toast').classList.add('hidden'), 3000);
+}
+
+function show(id) { document.getElementById(id)?.classList.remove('hidden'); }
+function hide(id) { document.getElementById(id)?.classList.add('hidden'); }
+function v(id) { return document.getElementById(id)?.value?.trim()||''; }
+function sv(id, val) { const el=document.getElementById(id); if(el) el.value=val; }
+function fErr(id, msg) { const el=document.getElementById(id); el.textContent=msg; el.classList.remove('hidden'); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function emptyState(msg) { return `<div class="text-center py-16 text-gray-400 text-sm">${esc(msg)}</div>`; }
+</script>
+</body>
+</html>

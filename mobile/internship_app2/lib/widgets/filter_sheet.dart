@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:internship_app2/l10n/strings.dart';
 
-enum SortOption { defaultSort, salaryDesc, salaryAsc }
+enum SortOption { defaultSort, salaryDesc, salaryAsc, dateSort }
 
 String sortLabel(SortOption opt) {
   switch (opt) {
@@ -11,6 +11,8 @@ String sortLabel(SortOption opt) {
       return tr('sort_salary_desc');
     case SortOption.salaryAsc:
       return tr('sort_salary_asc');
+    case SortOption.dateSort:
+      return 'Дата публикации';
   }
 }
 
@@ -19,34 +21,44 @@ class FilterOptions {
   final Set<String> formats;
   final bool paidOnly;
   final SortOption sort;
+  final double? salaryMin;
+  final double? salaryMax;
 
   const FilterOptions({
     this.cities = const {},
     this.formats = const {},
     this.paidOnly = false,
     this.sort = SortOption.defaultSort,
+    this.salaryMin,
+    this.salaryMax,
   });
 
   bool get isEmpty =>
-      cities.isEmpty && formats.isEmpty && !paidOnly && sort == SortOption.defaultSort;
+      cities.isEmpty && formats.isEmpty && !paidOnly &&
+      sort == SortOption.defaultSort && salaryMin == null && salaryMax == null;
 
   int get activeCount =>
       (cities.isNotEmpty ? 1 : 0) +
       (formats.isNotEmpty ? 1 : 0) +
       (paidOnly ? 1 : 0) +
-      (sort != SortOption.defaultSort ? 1 : 0);
+      (sort != SortOption.defaultSort ? 1 : 0) +
+      (salaryMin != null || salaryMax != null ? 1 : 0);
 
   FilterOptions copyWith({
     Set<String>? cities,
     Set<String>? formats,
     bool? paidOnly,
     SortOption? sort,
+    double? salaryMin,
+    double? salaryMax,
   }) {
     return FilterOptions(
       cities: cities ?? this.cities,
       formats: formats ?? this.formats,
       paidOnly: paidOnly ?? this.paidOnly,
       sort: sort ?? this.sort,
+      salaryMin: salaryMin ?? this.salaryMin,
+      salaryMax: salaryMax ?? this.salaryMax,
     );
   }
 }
@@ -179,19 +191,24 @@ class _FilterSheetState extends State<FilterSheet> {
 
                   const SizedBox(height: 20),
 
-                  // Format
+                  // Format — fixed three options matching Internship.format values
                   _sectionLabel(tr('filter_format')),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: widget.availableFormats.map((f) {
-                      final selected = _formats.contains(f);
+                    children: const [
+                      ('Office', 'On-site'),
+                      ('Remote', 'Remote'),
+                      ('Hybrid', 'Hybrid'),
+                    ].map((entry) {
+                      final (value, label) = entry;
+                      final selected = _formats.contains(value);
                       return _filterChip(
-                        label: f,
+                        label: label,
                         selected: selected,
                         onTap: () => setState(() {
-                          selected ? _formats.remove(f) : _formats.add(f);
+                          selected ? _formats.remove(value) : _formats.add(value);
                         }),
                       );
                     }).toList(),

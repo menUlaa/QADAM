@@ -1,12 +1,15 @@
 import 'package:flutter/foundation.dart';
 
-const _productionUrl = 'https://qadam-backend.onrender.com';
+const _prod = 'https://qadam-backend.onrender.com';
+const _local = 'http://localhost:8000';
 
-/// Returns the correct backend URL depending on platform.
-/// - Web / Release → production Railway backend
-/// - Android emulator debug → 10.0.2.2 (special loopback alias)
+/// Set to true to use local backend, false for production.
+const _useLocal = true;
+
 String get apiBaseUrl {
-  if (kReleaseMode) return _productionUrl;
-  if (kIsWeb) return 'http://localhost:8000';
-  return 'http://10.0.2.2:8000'; // Android emulator
+  if (_useLocal) {
+    if (kIsWeb) return _local;
+    return 'http://10.0.2.2:8000';
+  }
+  return _prod;
 }

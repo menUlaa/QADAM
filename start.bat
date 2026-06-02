@@ -1,7 +1,7 @@
 @echo off
 echo Starting Qadam...
 
-start "Qadam Backend" cmd /k "cd /d %~dp0backend && python -m uvicorn app.main:app --reload --port 8000"
+start "Qadam Backend" cmd /k "cd /d %~dp0backend && .venv\Scripts\python -m uvicorn app.main:app --reload --port 8000"
 
 timeout /t 3 /nobreak > nul
 

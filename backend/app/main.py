@@ -12,6 +12,7 @@ from app.routes.company import router as company_router
 from app.routes.ai import router as ai_router
 from app.routes.saved import router as saved_router
 from app.routes.notifications import router as notifications_router
+from app.routes.hh_integration import router as hh_router
 from app.db import Base, engine
 import app.models  # noqa: F401 — registers all models with Base
 from app import migrate
@@ -47,6 +48,7 @@ app.include_router(company_router, prefix="/company", tags=["Company"])
 app.include_router(ai_router,            prefix="/ai",            tags=["AI"])
 app.include_router(saved_router,         prefix="/saved",          tags=["Saved"])
 app.include_router(notifications_router, prefix="/notifications",   tags=["Notifications"])
+app.include_router(hh_router,           prefix="/vacancies",         tags=["External"])
 
 ADMIN_HTML = Path(__file__).parent.parent / "admin.html"
 

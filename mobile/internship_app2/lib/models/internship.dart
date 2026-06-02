@@ -17,6 +17,8 @@ class Internship {
   final String category;
   final DateTime? createdAt;
   final int? matchScore; // 60–100 personalised match, null if not logged in
+  final bool isExternal;   // true for HH.kz vacancies
+  final String? externalUrl; // link to open in browser for external vacancies
 
   const Internship({
     required this.id,
@@ -36,6 +38,8 @@ class Internship {
     this.category = 'IT',
     this.createdAt,
     this.matchScore,
+    this.isExternal = false,
+    this.externalUrl,
   });
 
   /// Create Internship from JSON (API response)
@@ -72,6 +76,34 @@ class Internship {
           ? DateTime.tryParse(json['created_at'] as String)
           : null,
       matchScore: json['match_score'] as int?,
+    );
+  }
+
+  /// Create Internship from HH.kz external vacancy JSON
+  factory Internship.fromHHJson(Map<String, dynamic> json) {
+    final salaryFrom = json['salary_from'] as int?;
+    final salaryTo   = json['salary_to']   as int?;
+    return Internship(
+      id: int.tryParse(
+            (json['id'] as String).replaceFirst('hh_', '')) ?? 0,
+      title:       json['title']   as String? ?? '',
+      company:     json['company'] as String? ?? '',
+      city:        json['city']    as String? ?? '',
+      format:      json['format']  as String? ?? '',
+      paid:        salaryFrom != null || salaryTo != null,
+      salaryKzt:   salaryFrom ?? salaryTo,
+      duration:    '',
+      description: '',
+      responsibilities: [],
+      requirements:     [],
+      skills:           [],
+      contactEmail:     '',
+      tags:             [],
+      createdAt: json['published_at'] != null
+          ? DateTime.tryParse(json['published_at'] as String)
+          : null,
+      isExternal:  true,
+      externalUrl: json['url'] as String?,
     );
   }
 

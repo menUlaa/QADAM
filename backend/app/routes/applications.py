@@ -17,6 +17,17 @@ class ApplicationCreate(BaseModel):
     message: Optional[str] = None
 
 
+class ExternalApplicationCreate(BaseModel):
+    hh_id: str
+    title: str
+    company: str
+    city: str
+    salary_from: Optional[int] = None
+    salary_to: Optional[int] = None
+    external_url: Optional[str] = None
+    message: Optional[str] = None
+
+
 def get_current_user_id(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
@@ -47,16 +58,67 @@ def apply(
     if existing:
         raise HTTPException(status_code=400, detail="Already applied to this internship")
 
+    user = get_user_by_id(db, user_id)
     application = Application(
         user_id=user_id,
         internship_id=app_data.internship_id,
         message=app_data.message,
+        cv_url=user.cv_url if user else None,
         status="pending",
     )
     db.add(application)
     db.commit()
     db.refresh(application)
 
+    return {"message": "Application submitted", "application_id": application.id}
+
+
+@router.post("/external", response_model=dict)
+def apply_external(
+    app_data: ExternalApplicationCreate,
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    hh_id = f"hh_{app_data.hh_id}"
+
+    # Find or create the internship from HH data
+    internship = db.query(Internship).filter(Internship.hh_id == hh_id).first()
+    if not internship:
+        internship = Internship(
+            hh_id=hh_id,
+            external_url=app_data.external_url,
+            title=app_data.title,
+            company=app_data.company,
+            city=app_data.city,
+            paid=app_data.salary_from is not None or app_data.salary_to is not None,
+            salary_kzt=app_data.salary_from or app_data.salary_to,
+            format="",
+            category="IT",
+            description="",
+            contact_email="",
+            is_active=True,
+        )
+        db.add(internship)
+        db.flush()
+
+    existing = db.query(Application).filter(
+        Application.user_id == user_id,
+        Application.internship_id == internship.id,
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Already applied to this internship")
+
+    user = get_user_by_id(db, user_id)
+    application = Application(
+        user_id=user_id,
+        internship_id=internship.id,
+        message=app_data.message,
+        cv_url=user.cv_url if user else None,
+        status="pending",
+    )
+    db.add(application)
+    db.commit()
+    db.refresh(application)
     return {"message": "Application submitted", "application_id": application.id}
 
 

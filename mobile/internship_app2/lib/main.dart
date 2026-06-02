@@ -1,11 +1,13 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:internship_app2/l10n/strings.dart';
+import 'package:internship_app2/screens/companies_page.dart';
 import 'package:internship_app2/screens/landing_screen.dart';
 import 'package:internship_app2/screens/main_screen.dart';
 import 'package:internship_app2/screens/onboarding_screen.dart';
 import 'package:internship_app2/screens/splash_screen.dart';
+import 'package:internship_app2/screens/universities_page.dart';
 import 'package:internship_app2/services/auth_service.dart';
 import 'package:internship_app2/services/base_url.dart';
 import 'package:http/http.dart' as http;
@@ -47,17 +49,31 @@ class QadamApp extends StatelessWidget {
           themeMode: mode,
           theme: ThemeData(
             useMaterial3: true,
+            fontFamily: 'Inter',
             colorSchemeSeed: const Color(0xFF2164F3),
             brightness: Brightness.light,
             scaffoldBackgroundColor: const Color(0xFFF3F4F6),
-            textTheme: GoogleFonts.plusJakartaSansTextTheme(ThemeData.light().textTheme),
+            textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme).apply(
+              bodyColor: const Color(0xFF111827),
+              displayColor: const Color(0xFF111827),
+            ).copyWith(
+              bodyLarge:   GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w500, color: const Color(0xFF111827)),
+              bodyMedium:  GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF111827)),
+              bodySmall:   GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF374151)),
+              titleLarge:  GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: const Color(0xFF111827)),
+              titleMedium: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF111827)),
+              titleSmall:  GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF111827)),
+              labelLarge:  GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF111827)),
+              labelMedium: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF374151)),
+              labelSmall:  GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500, color: const Color(0xFF374151)),
+            ),
             appBarTheme: AppBarTheme(
               backgroundColor: Colors.white,
               foregroundColor: const Color(0xFF111827),
               elevation: 0,
               surfaceTintColor: Colors.transparent,
               centerTitle: false,
-              titleTextStyle: GoogleFonts.plusJakartaSans(
+              titleTextStyle: GoogleFonts.inter(
                 color: const Color(0xFF111827),
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -79,13 +95,14 @@ class QadamApp extends StatelessWidget {
           ),
           darkTheme: ThemeData(
             useMaterial3: true,
+            fontFamily: 'Inter',
             colorSchemeSeed: const Color(0xFF2164F3),
             brightness: Brightness.dark,
-            textTheme: GoogleFonts.plusJakartaSansTextTheme(ThemeData.dark().textTheme),
+            textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
             appBarTheme: AppBarTheme(
               elevation: 0,
               centerTitle: false,
-              titleTextStyle: GoogleFonts.plusJakartaSans(
+              titleTextStyle: GoogleFonts.inter(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.3,
@@ -103,6 +120,22 @@ class QadamApp extends StatelessWidget {
             ),
           ),
           home: AppRoot(),
+          onGenerateRoute: (settings) {
+            final onAuth = settings.arguments as VoidCallback? ?? () {};
+            Route<dynamic> fade(Widget page) => PageRouteBuilder(
+                  pageBuilder: (_, a, _) => page,
+                  transitionsBuilder: (_, a, _, child) =>
+                      FadeTransition(opacity: a, child: child),
+                  transitionDuration: const Duration(milliseconds: 220),
+                );
+            switch (settings.name) {
+              case '/companies':
+                return fade(CompaniesPage(onAuth: onAuth));
+              case '/universities':
+                return fade(UniversitiesPage(onAuth: onAuth));
+            }
+            return null;
+          },
           builder: (context, child) => child!,
         ),
       ),
@@ -134,7 +167,7 @@ class _AppRootState extends State<AppRoot> {
     final results = await Future.wait([
       _authService.verifyToken(),
       _checkOnboarding(),
-      Future.delayed(const Duration(milliseconds: 1600)), // min splash time
+      Future.delayed(const Duration(milliseconds: 1600)),
     ]);
 
     final isValid = results[0] as bool;
@@ -167,18 +200,13 @@ class _AppRootState extends State<AppRoot> {
 
   @override
   Widget build(BuildContext context) {
-    // Still loading
-    if (_loggedIn == null || _showOnboarding == null) {
-      return const SplashScreen();
-    }
+    if (_loggedIn == null || _showOnboarding == null) return const SplashScreen();
 
-    // First launch — show onboarding
-    if (_showOnboarding!) {
-      return OnboardingScreen(onDone: _finishOnboarding);
-    }
+    if (_showOnboarding!) return OnboardingScreen(onDone: _finishOnboarding);
 
     return _loggedIn!
         ? MainScreen(onLogout: _logout)
         : LandingScreen(onStudentSuccess: _login);
   }
 }
+

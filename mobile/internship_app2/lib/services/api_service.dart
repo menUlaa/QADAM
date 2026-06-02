@@ -54,6 +54,31 @@ class ApiService {
     }
   }
 
+  /// Fetch HH.kz external vacancies via backend proxy.
+  /// Never throws — returns empty list on any error so the feed still works.
+  Future<List<Internship>> fetchExternalVacancies({
+    String text = '',
+    int page = 0,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/vacancies/external').replace(
+        queryParameters: {
+          'text': text,
+          'page': page.toString(),
+          'per_page': '20',
+        },
+      );
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        return (data['items'] as List<dynamic>)
+            .map((e) => Internship.fromHHJson(e as Map<String, dynamic>))
+            .toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
   /// Fetch single internship by ID
   Future<Internship> getInternship(int id) async {
     try {
@@ -89,6 +114,47 @@ class ApiService {
     if (response.statusCode != 200) {
       final error = json.decode(response.body);
       throw Exception(error['detail'] ?? 'Failed to apply');
+    }
+  }
+
+  /// Fetch full HH.kz vacancy details (description, skills, etc.)
+  Future<Map<String, dynamic>> getHhVacancyDetail(String hhId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/vacancies/external/$hhId'),
+    ).timeout(const Duration(seconds: 12));
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to load vacancy details');
+  }
+
+  /// Apply to an external HH.kz vacancy (stored in our platform)
+  Future<void> applyExternal({
+    required String hhId,
+    required String title,
+    required String company,
+    required String city,
+    int? salaryFrom,
+    String? externalUrl,
+    String? message,
+  }) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/applications/external'),
+      headers: headers,
+      body: json.encode({
+        'hh_id': hhId,
+        'title': title,
+        'company': company,
+        'city': city,
+        if (salaryFrom != null) 'salary_from': salaryFrom,
+        if (externalUrl != null) 'external_url': externalUrl,
+        if (message != null && message.isNotEmpty) 'message': message,
+      }),
+    );
+    if (response.statusCode != 200) {
+      final err = json.decode(response.body);
+      throw Exception(err['detail'] ?? 'Failed to apply');
     }
   }
 
@@ -210,14 +276,29 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> companyLogin(String email, String password) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/company/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'email': email, 'password': password}),
-    );
-    if (response.statusCode == 200) return json.decode(response.body);
-    final err = json.decode(response.body);
-    throw Exception(err['detail'] ?? 'Login failed');
+    Exception? lastError;
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final response = await http.post(
+          Uri.parse('$baseUrl/company/login'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({'email': email, 'password': password}),
+        ).timeout(
+          const Duration(seconds: 60),
+          onTimeout: () => throw Exception('Сервер просыпается — подождите и попробуйте снова'),
+        );
+        if (response.statusCode == 200) return json.decode(response.body);
+        final err = json.decode(response.body);
+        throw Exception(err['detail'] ?? 'Login failed');
+      } catch (e) {
+        lastError = e is Exception ? e : Exception(e.toString());
+        final msg = e.toString();
+        final isAuthError = msg.contains('Invalid') || msg.contains('incorrect') || msg.contains('not found');
+        if (isAuthError || attempt == 1) rethrow;
+        await Future.delayed(const Duration(seconds: 2));
+      }
+    }
+    throw lastError!;
   }
 
   Future<List<Map<String, dynamic>>> getCompanyInternshipsList(String token) async {
@@ -236,6 +317,27 @@ class ApiService {
       Uri.parse('$baseUrl/company/internships'),
       headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
       body: json.encode(data),
+    );
+    if (response.statusCode != 200) {
+      throw Exception(json.decode(response.body)['detail'] ?? 'Failed');
+    }
+  }
+
+  Future<void> updateCompanyInternship(String token, int id, Map<String, dynamic> data) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/company/internships/$id'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      body: json.encode(data),
+    );
+    if (response.statusCode != 200) {
+      throw Exception(json.decode(response.body)['detail'] ?? 'Failed');
+    }
+  }
+
+  Future<void> deleteCompanyInternship(String token, int id) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/company/internships/$id'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
     );
     if (response.statusCode != 200) {
       throw Exception(json.decode(response.body)['detail'] ?? 'Failed');

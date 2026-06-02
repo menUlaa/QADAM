@@ -199,17 +199,30 @@ class UniversityService {
     required String email,
     required String password,
   }) async {
-    final res = await http.post(
-      Uri.parse('$_base/university/login'),
-      headers: _headers(),
-      body: jsonEncode({'email': email, 'password': password}),
-    );
-    final body = jsonDecode(res.body);
-    if (res.statusCode != 200) {
-      throw Exception(body['detail'] ?? 'Login failed');
+    Exception? lastError;
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http.post(
+          Uri.parse('$_base/university/login'),
+          headers: _headers(),
+          body: jsonEncode({'email': email, 'password': password}),
+        ).timeout(
+          const Duration(seconds: 60),
+          onTimeout: () => throw Exception('Сервер просыпается — подождите и попробуйте снова'),
+        );
+        final body = jsonDecode(res.body);
+        if (res.statusCode != 200) throw Exception(body['detail'] ?? 'Login failed');
+        await _saveSession(body['access_token'], body['university']);
+        return UniversityInfo.fromJson(body['university']);
+      } catch (e) {
+        lastError = e is Exception ? e : Exception(e.toString());
+        final msg = e.toString();
+        final isAuthError = msg.contains('Invalid') || msg.contains('incorrect') || msg.contains('not found');
+        if (isAuthError || attempt == 1) rethrow;
+        await Future.delayed(const Duration(seconds: 2));
+      }
     }
-    await _saveSession(body['access_token'], body['university']);
-    return UniversityInfo.fromJson(body['university']);
+    throw lastError!;
   }
 
   Future<List<StudentRecord>> getStudents() async {
@@ -217,7 +230,7 @@ class UniversityService {
     final res = await http.get(
       Uri.parse('$_base/university/students'),
       headers: _headers(token),
-    );
+    ).timeout(const Duration(seconds: 30));
     if (res.statusCode != 200) throw Exception('Failed to load students');
     final list = jsonDecode(res.body) as List;
     return list.map((j) => StudentRecord.fromJson(j)).toList();
@@ -228,7 +241,7 @@ class UniversityService {
     final res = await http.get(
       Uri.parse('$_base/university/analytics'),
       headers: _headers(token),
-    );
+    ).timeout(const Duration(seconds: 30));
     if (res.statusCode != 200) throw Exception('Failed to load analytics');
     return UniversityAnalytics.fromJson(jsonDecode(res.body));
   }

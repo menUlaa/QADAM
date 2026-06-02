@@ -60,6 +60,22 @@ class InternshipCreate(BaseModel):
     category: str = "IT"
 
 
+class InternshipUpdate(BaseModel):
+    title: Optional[str] = None
+    city: Optional[str] = None
+    format: Optional[str] = None
+    paid: Optional[bool] = None
+    salary_kzt: Optional[int] = None
+    duration: Optional[str] = None
+    description: Optional[str] = None
+    responsibilities: Optional[List[str]] = None
+    requirements: Optional[List[str]] = None
+    skills: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
+    category: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
 # ── Helper ────────────────────────────────────────────────────────────────────
 
 def _get_company(credentials: HTTPAuthorizationCredentials, db: Session) -> Company:
@@ -176,6 +192,26 @@ def create_internship(
     return {"id": internship.id, "message": "Internship created"}
 
 
+@router.put("/internships/{internship_id}")
+def update_internship(
+    internship_id: int,
+    data: InternshipUpdate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+):
+    company = _get_company(credentials, db)
+    it = db.query(Internship).filter(
+        Internship.id == internship_id,
+        Internship.company_id == company.id,
+    ).first()
+    if not it:
+        raise HTTPException(status_code=404, detail="Internship not found")
+    for field, value in data.model_dump(exclude_none=True).items():
+        setattr(it, field, value)
+    db.commit()
+    return {"message": "Updated"}
+
+
 @router.delete("/internships/{internship_id}")
 def delete_internship(
     internship_id: int,
@@ -200,6 +236,9 @@ def delete_internship(
 def company_applications(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
+    skill: Optional[str] = None,
+    specialty: Optional[str] = None,
+    status_filter: Optional[str] = None,
 ):
     company = _get_company(credentials, db)
     # Get all internship ids for this company
@@ -237,21 +276,32 @@ def company_applications(
         user = users.get(app.user_id)
         internship = internship_map.get(app.internship_id)
 
-        # Resolve university name via relationship
+        # Resolve university / specialty
         student_university = ""
-        student_specialty = ""
+        student_specialty = getattr(user, "specialty", "") or ""
         if user and user.university_link:
             if user.university_link.university:
                 student_university = user.university_link.university.name or ""
-            student_specialty = user.university_link.specialty or ""
+            if user.university_link.specialty:
+                student_specialty = user.university_link.specialty
 
-        # Resolve skills: prefer normalised skill_links, fallback to JSON
+        # Resolve skills
         student_skills: list = []
         if user:
             if user.skill_links:
                 student_skills = [sl.skill.name for sl in user.skill_links if sl.skill]
             elif user.skills:
                 student_skills = user.skills if isinstance(user.skills, list) else []
+
+        # FR3.5 — filter by skill
+        if skill and skill.lower() not in [s.lower() for s in student_skills]:
+            continue
+        # FR3.5 — filter by specialty
+        if specialty and specialty.lower() not in (student_specialty or "").lower():
+            continue
+        # filter by status
+        if status_filter and app.status != status_filter:
+            continue
 
         result.append({
             "id": app.id,
@@ -264,7 +314,7 @@ def company_applications(
             "student_email": user.email if user else "",
             "student_university": student_university,
             "student_specialty": student_specialty,
-            "student_cv_url": user.cv_url or "" if user else "",
+            "student_cv_url": getattr(app, "cv_url", None) or (user.cv_url if user else "") or "",
             "student_skills": student_skills,
         })
     return result

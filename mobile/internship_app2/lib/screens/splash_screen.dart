@@ -60,17 +60,21 @@ class _SplashScreenState extends State<SplashScreen>
               scale: _scale,
               child: FadeTransition(
                 opacity: _fade,
-                child: Container(
-                  width: 96,
-                  height: 96,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(28),
-                  ),
-                  child: const Icon(
-                    Icons.work_outline_rounded,
-                    color: Colors.white,
-                    size: 52,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Image.asset(
+                    'assets/images/logo.jpg',
+                    width: 96,
+                    height: 96,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, err, stack) => Container(
+                      width: 96, height: 96,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(28),
+                      ),
+                      child: const Icon(Icons.work_outline_rounded, color: Colors.white, size: 52),
+                    ),
                   ),
                 ),
               ),

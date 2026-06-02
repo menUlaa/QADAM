@@ -12,6 +12,8 @@ class User {
   final String? universityName;
   final String? specialty;
   final int? studyYear;
+  final double? gpa;
+  final int? graduationYear;
   final String? cvUrl;
   final String? cvFilename;
   final String? cvUploadedAt;
@@ -32,6 +34,8 @@ class User {
     this.universityName,
     this.specialty,
     this.studyYear,
+    this.gpa,
+    this.graduationYear,
     this.cvUrl,
     this.cvFilename,
     this.cvUploadedAt,
@@ -54,6 +58,8 @@ class User {
       universityName: json['university_name'] as String?,
       specialty: json['specialty'] as String?,
       studyYear: json['study_year'] as int?,
+      gpa: (json['gpa'] as num?)?.toDouble(),
+      graduationYear: json['graduation_year'] as int?,
       cvUrl: json['cv_url'] as String?,
       cvFilename: json['cv_filename'] as String?,
       cvUploadedAt: json['cv_uploaded_at'] as String?,
@@ -80,6 +86,8 @@ class User {
       'university_name': universityName,
       'specialty': specialty,
       'study_year': studyYear,
+      'gpa': gpa,
+      'graduation_year': graduationYear,
       'cv_url': cvUrl,
       'cv_filename': cvFilename,
       'cv_uploaded_at': cvUploadedAt,
@@ -97,6 +105,8 @@ class User {
     String? universityName,
     String? specialty,
     int? studyYear,
+    double? gpa,
+    int? graduationYear,
     String? cvUrl,
     String? cvFilename,
     String? cvUploadedAt,
@@ -117,6 +127,8 @@ class User {
       universityName: universityName ?? this.universityName,
       specialty: specialty ?? this.specialty,
       studyYear: studyYear ?? this.studyYear,
+      gpa: gpa ?? this.gpa,
+      graduationYear: graduationYear ?? this.graduationYear,
       cvUrl: cvUrl ?? this.cvUrl,
       cvFilename: cvFilename ?? this.cvFilename,
       cvUploadedAt: cvUploadedAt ?? this.cvUploadedAt,
@@ -124,6 +136,50 @@ class User {
       portfolioUrl: portfolioUrl ?? this.portfolioUrl,
     );
   }
+}
+
+class WorkExperience {
+  final int id;
+  final String title;
+  final String organization;
+  final String expType;
+  final String startDate;
+  final String? endDate;
+  final bool isCurrent;
+  final String? description;
+
+  const WorkExperience({
+    required this.id,
+    required this.title,
+    required this.organization,
+    this.expType = 'internship',
+    required this.startDate,
+    this.endDate,
+    this.isCurrent = false,
+    this.description,
+  });
+
+  factory WorkExperience.fromJson(Map<String, dynamic> j) => WorkExperience(
+    id: j['id'] as int,
+    title: j['title'] as String,
+    organization: j['organization'] as String,
+    expType: j['exp_type'] as String? ?? 'internship',
+    startDate: j['start_date'] as String,
+    endDate: j['end_date'] as String?,
+    isCurrent: j['is_current'] as bool? ?? false,
+    description: j['description'] as String?,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'organization': organization,
+    'exp_type': expType,
+    'start_date': startDate,
+    'end_date': endDate,
+    'is_current': isCurrent,
+    'description': description,
+  };
 }
 
 /// Returned by register() — may require email verification instead of token

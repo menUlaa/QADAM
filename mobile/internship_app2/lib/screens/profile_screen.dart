@@ -1,10 +1,12 @@
-import 'package:file_picker/file_picker.dart';
+﻿import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:internship_app2/l10n/strings.dart';
 import 'package:internship_app2/models/user.dart';
 import 'package:internship_app2/screens/ai_chat_screen.dart';
 import 'package:internship_app2/services/api_service.dart';
 import 'package:internship_app2/services/auth_service.dart';
+import 'package:internship_app2/services/base_url.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -15,13 +17,16 @@ const _red     = Color(0xFFEF4444);
 const _ink     = Color(0xFF111827);
 const _sub     = Color(0xFF6B7280);
 const _div     = Color(0xFFE5E7EB);
-const _surface = Color(0xFFF9FAFB);
+const _surface = Color(0xFFF3F2EE); // used in form sheets
+const _pageBg  = Color(0xFFF8F9FB);
 
-const _cardDeco = BoxDecoration(
+BoxDecoration _card() => BoxDecoration(
   color: Colors.white,
-  borderRadius: BorderRadius.all(Radius.circular(12)),
-  boxShadow: [BoxShadow(color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 2))],
+  border: Border.all(color: const Color(0xFFE5E7EB), width: 0.5),
+  borderRadius: BorderRadius.circular(14),
 );
+
+TextStyle _h2(Color c) => GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: c);
 
 // ── ProfileScreen ─────────────────────────────────────────────────────────────
 class ProfileScreen extends StatefulWidget {
@@ -114,7 +119,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ));
   }
 
-  // ── Completeness ──────────────────────────────────────────────────────────────
   double get _completeness {
     if (_user == null) return 0;
     final checks = [
@@ -150,7 +154,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .toUpperCase();
   }
 
-  // ── App stats ─────────────────────────────────────────────────────────────────
   int get _acceptedCount =>
       _applications.where((a) => a['status'] == 'accepted').length;
 
@@ -162,7 +165,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     };
   }
 
-  // ── Actions ───────────────────────────────────────────────────────────────────
   Future<void> _toggleStatus() async {
     if (_user == null) return;
     final updated = await _auth.updateProfile(openToWork: !_user!.openToWork);
@@ -170,15 +172,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _openEditSheet({int tab = 0}) {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _EditProfileSheet(
+      barrierColor: Colors.black54,
+      builder: (_) => _EditProfileDialog(
         user: _user!,
         authService: _auth,
         onSaved: (u) => setState(() => _user = u),
-        initialTab: tab,
       ),
     );
   }
@@ -214,331 +214,388 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.sizeOf(context).width;
-    final isDesktop = w > 720;
-    final hPad = isDesktop ? ((w - 700) / 2).clamp(0.0, double.infinity) : 0.0;
-
+    final isDesktop = w > 900;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _pageBg,
       body: RefreshIndicator(
         onRefresh: _load,
         color: _blue,
-        child: ListView(
-          padding: EdgeInsets.symmetric(horizontal: hPad),
+        child: isDesktop ? _buildDesktop() : _buildMobile(),
+      ),
+    );
+  }
+
+  // ── Desktop: two-column 62/38 ─────────────────────────────────────────────────
+  Widget _buildDesktop() {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Name + avatar ─────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            // Left column 62%
+            Expanded(
+              flex: 62,
+              child: Column(
                 children: [
-                  Expanded(
+                  _buildHeaderCard(),
+                  const SizedBox(height: 14),
+                  // Card 2: Резюме
+                  Container(
+                    decoration: _card(),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _user?.name.isNotEmpty == true
-                              ? _user!.name
-                              : 'Имя не указано',
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w800,
-                            color: _ink,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(Icons.email_outlined, size: 14, color: _sub),
-                            const SizedBox(width: 6),
-                            Text(
-                              _user?.email ?? '',
-                              style: const TextStyle(fontSize: 13, color: _sub),
-                            ),
-                          ],
+                        _cardTitle('Резюме'),
+                        const Divider(height: 1, thickness: 0.5, color: _div),
+                        _CvRow(
+                          cvUrl: _user?.cvUrl,
+                          cvFilename: _user?.cvFilename,
+                          cvUploadedAt: _user?.cvUploadedAt,
+                          uploading: _cvUploading,
+                          onUpload: _uploadCv,
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Column(
-                    children: [
-                      Container(
-                        width: 64, height: 64,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF374151),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            _initials,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      GestureDetector(
-                        onTap: _user != null ? () => _openEditSheet() : null,
-                        child: const Text(
-                          'Изменить',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: _blue,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 14),
+                  // Card 3: Профиль
+                  Container(
+                    decoration: _card(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _cardTitle('Профиль'),
+                        _profileRows(),
+                      ],
+                    ),
                   ),
+                  const SizedBox(height: 14),
+                  // Card 4: Мои заявки
+                  Container(
+                    decoration: _card(),
+                    child: _ApplicationsSection(
+                      loading: _loadingApps,
+                      apps: _filteredApps,
+                      allApps: _applications,
+                      filter: _appFilter,
+                      onFilterChange: (f) => setState(() => _appFilter = f),
+                      onReport: _openReportSheet,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
-
-            // ── Status banner ─────────────────────────────────────────────
-            _StatusBanner(
-              openToWork: _user?.openToWork ?? true,
-              onTap: _user != null ? _toggleStatus : null,
-            ),
-            const SizedBox(height: 12),
-            const Divider(height: 1, thickness: 1, color: _div),
-
-            // ── Completeness ──────────────────────────────────────────────
-            if (_user != null && _completeness < 1.0) ...[
-              _CompletenessBar(value: _completeness, missing: _missingItems),
-              const Divider(height: 1, thickness: 1, color: _div),
-            ],
-
-            // ── AI Анализ ─────────────────────────────────────────────────
-            if (_user != null) ...[
-              _AiProfileCard(api: _api),
-              const Divider(height: 1, thickness: 1, color: _div),
-            ],
-
-            // ── Резюме ────────────────────────────────────────────────────
-            _SectionHeader('Резюме'),
-            _CvRow(
-              cvUrl: _user?.cvUrl,
-              cvFilename: _user?.cvFilename,
-              cvUploadedAt: _user?.cvUploadedAt,
-              uploading: _cvUploading,
-              onUpload: _uploadCv,
-            ),
-            const Divider(height: 1, thickness: 1, color: _div),
-
-            // ── Профиль ───────────────────────────────────────────────────
-            _SectionHeader('Профиль'),
-            _ProfileRow(
-              icon: Icons.notes_rounded,
-              title: 'О себе',
-              subtitle: (_user?.bio ?? '').isNotEmpty
-                  ? _user!.bio!
-                  : 'Расскажи о себе — работодатели читают это первым',
-              dim: (_user?.bio ?? '').isEmpty,
-              onTap: () => _openEditSheet(),
-            ),
-            const Divider(height: 1, thickness: 1, indent: 54, color: _div),
-            _ProfileRow(
-              icon: Icons.bolt_rounded,
-              title: 'Навыки',
-              subtitle: _user?.skills.isNotEmpty == true
-                  ? _user!.skills.take(4).join(', ') +
-                    (_user!.skills.length > 4 ? '  +${_user!.skills.length - 4}' : '')
-                  : 'Добавить навыки — работодатели фильтруют по ним',
-              dim: _user?.skills.isEmpty != false,
-              onTap: () => _openSkillsSheet(),
-            ),
-            const Divider(height: 1, thickness: 1, indent: 54, color: _div),
-            _ProfileRow(
-              icon: Icons.school_outlined,
-              title: 'Образование',
-              subtitle: (_user?.universityName ?? '').isNotEmpty
-                  ? _user!.universityName! +
-                    ((_user?.specialty ?? '').isNotEmpty
-                        ? ' · ${_user!.specialty}'
-                        : '')
-                  : 'Добавить университет и специальность',
-              dim: (_user?.universityName ?? '').isEmpty,
-              onTap: () => _openEditSheet(tab: 1),
-            ),
-            const Divider(height: 1, thickness: 1, indent: 54, color: _div),
-            _ProfileRow(
-              icon: Icons.link_rounded,
-              title: 'Portfolio URL',
-              subtitle: (_user?.portfolioUrl ?? '').isNotEmpty
-                  ? _user!.portfolioUrl!
-                  : 'GitHub, Behance, Dribbble...',
-              dim: (_user?.portfolioUrl ?? '').isEmpty,
-              onTap: () => _openEditSheet(),
-            ),
-            const Divider(height: 1, thickness: 1, color: _div),
-
-            // ── Stats ─────────────────────────────────────────────────────
-            _StatsBar(
-              total: _applications.length,
-              accepted: _acceptedCount,
-              openToWork: _user?.openToWork ?? true,
-            ),
-            const Divider(height: 1, thickness: 1, color: _div),
-
-            // ── Applications ──────────────────────────────────────────────
-            _ApplicationsSection(
-              loading: _loadingApps,
-              apps: _filteredApps,
-              allApps: _applications,
-              filter: _appFilter,
-              onFilterChange: (f) => setState(() => _appFilter = f),
-              onReport: _openReportSheet,
-            ),
-            const Divider(height: 1, thickness: 1, color: _div),
-
-            // ── Settings ──────────────────────────────────────────────────
-            _SettingsSection(onLogout: _logout),
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Status Banner ─────────────────────────────────────────────────────────────
-class _StatusBanner extends StatelessWidget {
-  final bool openToWork;
-  final VoidCallback? onTap;
-  const _StatusBanner({required this.openToWork, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final color  = openToWork ? const Color(0xFF059669) : const Color(0xFF6B7280);
-    final bg     = openToWork ? const Color(0xFFF0FDF4) : const Color(0xFFF9FAFB);
-    final border = openToWork ? const Color(0xFFBBF7D0) : const Color(0xFFE5E7EB);
-    final label  = openToWork
-        ? 'Работодатели могут вас найти'
-        : 'Скрыт от работодателей';
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: border),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.visibility_outlined, size: 16, color: color),
-            const SizedBox(width: 10),
+            const SizedBox(width: 14),
+            // Right column 38%
             Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
+              flex: 38,
+              child: Column(
+                children: [
+                  if (_user != null) ...[
+                    Container(
+                      decoration: _card(),
+                      child: _CompletenessBar(value: _completeness, missing: _missingItems),
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      decoration: _card(),
+                      child: _AiProfileCard(api: _api),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+                  Container(
+                    decoration: _card(),
+                    child: _StatsBar(total: _applications.length, accepted: _acceptedCount),
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    decoration: _card(),
+                    child: _SettingsSection(onLogout: _logout),
+                  ),
+                  const SizedBox(height: 32),
+                ],
               ),
             ),
-            Icon(
-              openToWork
-                  ? Icons.expand_more_rounded
-                  : Icons.chevron_right_rounded,
-              size: 18,
-              color: color,
-            ),
           ],
         ),
       ),
     );
   }
-}
 
-// ── Completeness Bar ──────────────────────────────────────────────────────────
-class _CompletenessBar extends StatelessWidget {
-  final double value;
-  final List<String> missing;
-  const _CompletenessBar({required this.value, required this.missing});
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = (value * 100).round();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+  // ── Mobile: single column ─────────────────────────────────────────────────────
+  Widget _buildMobile() {
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        _buildHeaderCard(),
+        const SizedBox(height: 12),
+        if (_user != null) ...[
+          Container(
+            decoration: _card(),
+            child: _CompletenessBar(value: _completeness, missing: _missingItems),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            decoration: _card(),
+            child: _AiProfileCard(api: _api),
+          ),
+          const SizedBox(height: 12),
+        ],
+        Container(
+          decoration: _card(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.trending_up_rounded, size: 15, color: _blue),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Профиль заполнен на $pct%',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: _ink,
+              _cardTitle('Резюме'),
+              const Divider(height: 1, thickness: 0.5, color: _div),
+              _CvRow(
+                cvUrl: _user?.cvUrl,
+                cvFilename: _user?.cvFilename,
+                cvUploadedAt: _user?.cvUploadedAt,
+                uploading: _cvUploading,
+                onUpload: _uploadCv,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: _card(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _cardTitle('Профиль'),
+              _profileRows(),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: _card(),
+          child: _StatsBar(total: _applications.length, accepted: _acceptedCount),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: _card(),
+          child: _ApplicationsSection(
+            loading: _loadingApps,
+            apps: _filteredApps,
+            allApps: _applications,
+            filter: _appFilter,
+            onFilterChange: (f) => setState(() => _appFilter = f),
+            onReport: _openReportSheet,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: _card(),
+          child: _SettingsSection(onLogout: _logout),
+        ),
+        const SizedBox(height: 32),
+      ],
+    );
+  }
+
+  // ── Header Card ───────────────────────────────────────────────────────────────
+  Widget _buildHeaderCard() {
+    final open = _user?.openToWork ?? true;
+    final name = _user?.name.isNotEmpty == true ? _user!.name : 'Имя не указано';
+
+    return Container(
+      decoration: _card(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Banner
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                height: 90,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF1a4fd6), Color(0xFF2164F3), Color(0xFF6b8ef5)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+                ),
+              ),
+              // "Редактировать" button top-right
+              Positioned(
+                top: 10, right: 12,
+                child: GestureDetector(
+                  onTap: _user != null ? () => _openEditSheet() : null,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+                    ),
+                    child: const Text('Редактировать',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                   ),
                 ),
               ),
-              Text(
-                '$pct%',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: _blue,
+              // Avatar overlapping banner by -28px
+              Positioned(
+                bottom: -29, left: 16,
+                child: GestureDetector(
+                  onTap: _user != null ? _toggleStatus : null,
+                  child: Container(
+                    width: 58, height: 58,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _blue,
+                      border: Border.all(color: Colors.white, width: 3),
+                    ),
+                    child: Center(
+                      child: Text(_initials,
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: value,
-              minHeight: 4,
-              backgroundColor: const Color(0xFFE5E7EB),
-              valueColor: const AlwaysStoppedAnimation(_blue),
+          // Content below banner
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 37, 16, 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(width: 70), // avatar placeholder
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Name + badge
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 6,
+                        children: [
+                          Text(name,
+                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w500, color: _ink)),
+                          if (open)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEAF3DE),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: const Color(0xFFa8d58a)),
+                              ),
+                              child: const Text('В поиске работы',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF27500A))),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(_user?.email ?? '',
+                        style: const TextStyle(fontSize: 12, color: _sub)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    GestureDetector(
+                      onTap: _user != null ? () => _openEditSheet() : null,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: _div),
+                        ),
+                        child: const Text('Добавить раздел',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: _ink)),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: _user != null ? () => _openEditSheet() : null,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _blue,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text('Настройки',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          if (missing.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              'Добавь: ${missing.join(', ')}',
-              style: const TextStyle(fontSize: 12, color: _sub),
-            ),
-          ],
         ],
       ),
     );
   }
-}
 
-// ── Section Header ────────────────────────────────────────────────────────────
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  const _SectionHeader(this.title);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w800,
-          color: _ink,
-          letterSpacing: -0.3,
-        ),
+  Widget _profileRows() => Column(
+    children: [
+      _ProfileRow(
+        icon: Icons.notes_rounded, title: 'О себе',
+        iconColor: const Color(0xFF2164F3), iconBg: const Color(0xFFEBF0FA),
+        subtitle: (_user?.bio ?? '').isNotEmpty
+            ? _user!.bio!
+            : 'Расскажи о себе — работодатели читают это первым',
+        dim: (_user?.bio ?? '').isEmpty,
+        onTap: () => _openEditSheet(),
       ),
-    );
-  }
+      const Divider(height: 0.5, color: _div),
+      _ProfileRow(
+        icon: Icons.bolt_rounded, title: 'Навыки',
+        iconColor: const Color(0xFF7C3AED), iconBg: const Color(0xFFF3EEFF),
+        subtitle: _user?.skills.isNotEmpty == true
+            ? _user!.skills.take(4).join(', ') +
+              (_user!.skills.length > 4 ? '  +${_user!.skills.length - 4}' : '')
+            : 'Добавить навыки — работодатели фильтруют по ним',
+        dim: _user?.skills.isEmpty != false,
+        onTap: () => _openSkillsSheet(),
+      ),
+      const Divider(height: 0.5, color: _div),
+      _ProfileRow(
+        icon: Icons.school_rounded, title: 'Образование',
+        iconColor: const Color(0xFF059669), iconBg: const Color(0xFFECFDF5),
+        subtitle: (_user?.universityName ?? '').isNotEmpty
+            ? _user!.universityName! +
+              ((_user?.specialty ?? '').isNotEmpty ? ' · ${_user!.specialty}' : '')
+            : 'Добавить университет и специальность',
+        dim: (_user?.universityName ?? '').isEmpty,
+        onTap: () => _openEditSheet(tab: 1),
+      ),
+      const Divider(height: 0.5, color: _div),
+      _ProfileRow(
+        icon: Icons.work_rounded, title: 'Опыт работы',
+        iconColor: const Color(0xFFD97706), iconBg: const Color(0xFFFFF7ED),
+        subtitle: 'Стажировки, работа, фриланс',
+        dim: false,
+        onTap: () => _openEditSheet(tab: 2),
+      ),
+      const Divider(height: 0.5, color: _div),
+      _ProfileRow(
+        icon: Icons.link_rounded, title: 'Portfolio URL',
+        iconColor: const Color(0xFFDB2777), iconBg: const Color(0xFFFDF2F8),
+        subtitle: (_user?.portfolioUrl ?? '').isNotEmpty
+            ? _user!.portfolioUrl!
+            : 'GitHub, Behance, Dribbble...',
+        dim: (_user?.portfolioUrl ?? '').isEmpty,
+        onTap: () => _openEditSheet(),
+      ),
+    ],
+  );
+
+  Widget _cardTitle(String title) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+    child: Text(title, style: _h2(_ink)),
+  );
 }
 
 // ── Profile Row ───────────────────────────────────────────────────────────────
@@ -548,6 +605,8 @@ class _ProfileRow extends StatelessWidget {
   final String subtitle;
   final bool dim;
   final VoidCallback onTap;
+  final Color? iconColor;
+  final Color? iconBg;
 
   const _ProfileRow({
     required this.icon,
@@ -555,45 +614,41 @@ class _ProfileRow extends StatelessWidget {
     required this.subtitle,
     required this.onTap,
     this.dim = false,
+    this.iconColor,
+    this.iconBg,
   });
 
   @override
   Widget build(BuildContext context) {
+    final ic = dim ? const Color(0xFFD1D5DB) : (iconColor ?? _blue);
+    final bg = dim ? const Color(0xFFF3F4F6) : (iconBg ?? const Color(0xFFEBF0FA));
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: dim ? const Color(0xFFD1D5DB) : _blue),
-            const SizedBox(width: 14),
+            Container(
+              width: 34, height: 34,
+              decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(9)),
+              child: Icon(icon, size: 17, color: ic),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: _ink,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: dim ? const Color(0xFFADB5BD) : _sub,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Text(title,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _ink)),
+                  const SizedBox(height: 1),
+                  Text(subtitle,
+                    style: TextStyle(fontSize: 12, color: dim ? const Color(0xFFBEC3CA) : _sub),
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.chevron_right, size: 18, color: _sub),
+            const Icon(Icons.chevron_right_rounded, size: 16, color: Color(0xFFCBD5E1)),
           ],
         ),
       ),
@@ -635,23 +690,27 @@ class _CvRow extends StatelessWidget {
       return InkWell(
         onTap: uploading ? null : onUpload,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              const Icon(Icons.upload_file_rounded, size: 20, color: _blue),
-              const SizedBox(width: 14),
+              Container(
+                width: 34, height: 34,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF4FF),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.upload_file_rounded, size: 18, color: _blue),
+              ),
+              const SizedBox(width: 12),
               const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Загрузить резюме',
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: _ink)),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _ink)),
                     SizedBox(height: 2),
                     Text('PDF, максимум 5 МБ',
-                        style: TextStyle(fontSize: 13, color: _sub)),
+                        style: TextStyle(fontSize: 12, color: _sub)),
                   ],
                 ),
               ),
@@ -667,67 +726,108 @@ class _CvRow extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: _div),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              decoration: BoxDecoration(
-                color: _blue,
-                borderRadius: BorderRadius.circular(4),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Row(
+        children: [
+          Container(
+            width: 34, height: 34,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF4FF),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.description_outlined, size: 18, color: _blue),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  cvFilename ?? 'resume.pdf',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _ink),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  'Добавлен ${_fmt(cvUploadedAt)}',
+                  style: const TextStyle(fontSize: 12, color: _sub),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.visibility_outlined, size: 18, color: _sub),
+            onPressed: () async {
+              final url = Uri.parse('$apiBaseUrl$cvUrl');
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              }
+            },
+          ),
+          IconButton(
+            icon: uploading
+                ? const SizedBox(
+                    width: 16, height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: _blue))
+                : const Icon(Icons.more_horiz, size: 20, color: _sub),
+            onPressed: uploading ? null : onUpload,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Completeness Bar ──────────────────────────────────────────────────────────
+class _CompletenessBar extends StatelessWidget {
+  final double value;
+  final List<String> missing;
+  const _CompletenessBar({required this.value, required this.missing});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (value * 100).round();
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text('Заполнение профиля',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _ink)),
               ),
-              child: const Text('PDF',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800)),
+              Text('$pct%',
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _blue)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              value: value,
+              minHeight: 5,
+              backgroundColor: const Color(0xFFE5E7EB),
+              valueColor: const AlwaysStoppedAnimation<Color>(_blue),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    cvFilename ?? 'resume.pdf',
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: _ink),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    'Добавлен ${_fmt(cvUploadedAt)}',
-                    style: const TextStyle(fontSize: 12, color: _sub),
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.visibility_outlined, size: 18, color: _sub),
-              onPressed: () async {
-                const base = 'https://qadam-backend.onrender.com';
-                final url = Uri.parse('$base$cvUrl');
-                if (await canLaunchUrl(url)) {
-                  await launchUrl(url, mode: LaunchMode.externalApplication);
-                }
-              },
-            ),
-            IconButton(
-              icon: uploading
-                  ? const SizedBox(
-                      width: 16, height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: _blue))
-                  : const Icon(Icons.more_horiz, size: 20, color: _sub),
-              onPressed: uploading ? null : onUpload,
+          ),
+          if (missing.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: missing.map((m) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEBF0FA),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(m,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _blue)),
+              )).toList(),
             ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -737,58 +837,53 @@ class _CvRow extends StatelessWidget {
 class _StatsBar extends StatelessWidget {
   final int total;
   final int accepted;
-  final bool openToWork;
-
-  const _StatsBar({
-    required this.total,
-    required this.accepted,
-    required this.openToWork,
-  });
+  const _StatsBar({required this.total, required this.accepted});
 
   @override
   Widget build(BuildContext context) {
+    final pending = total - accepted;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          _Stat(value: '$total', label: 'Откликов', color: _blue),
-          _vline(),
-          _Stat(value: '$accepted', label: 'Принято', color: _green),
-          _vline(),
-          _Stat(
-            value: openToWork ? 'Открыт' : 'Закрыт',
-            label: 'Статус',
-            color: openToWork ? _green : _sub,
-          ),
+          _StatBox(value: '$total',   label: 'Всего заявок', color: _blue),
+          const SizedBox(width: 8),
+          _StatBox(value: '$accepted', label: 'Принято',     color: const Color(0xFF059669)),
+          const SizedBox(width: 8),
+          _StatBox(value: '$pending',  label: 'В ожидании',  color: const Color(0xFFD97706)),
         ],
       ),
     );
   }
-
-  Widget _vline() => Container(
-    width: 1, height: 32,
-    margin: const EdgeInsets.symmetric(horizontal: 20),
-    color: _div,
-  );
 }
 
-class _Stat extends StatelessWidget {
+class _StatBox extends StatelessWidget {
   final String value;
   final String label;
   final Color color;
-  const _Stat({required this.value, required this.label, required this.color});
+  const _StatBox({required this.value, required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(value,
-            style: TextStyle(
-                fontSize: 18, fontWeight: FontWeight.w800, color: color)),
-        Text(label,
-            style: const TextStyle(fontSize: 12, color: _sub)),
-      ],
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8F9FB),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(value,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: color)),
+            const SizedBox(height: 2),
+            Text(label,
+              style: const TextStyle(fontSize: 11, color: _sub),
+              textAlign: TextAlign.center),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -817,56 +912,49 @@ class _ApplicationsSection extends StatelessWidget {
     final accepted = allApps.where((a) => a['status'] == 'accepted').length;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 20, bottom: 12),
-            child: Text('Мои заявки',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: _ink,
-                    letterSpacing: -0.3)),
-          ),
+          const Text('Мои заявки',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _ink)),
+          const SizedBox(height: 10),
+          const Divider(height: 1, thickness: 0.5, color: _div),
+          const SizedBox(height: 12),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
                 _FilterChip(
-                    label: 'Все (${allApps.length})',
-                    active: filter == 'all',
-                    onTap: () => onFilterChange('all')),
+                  label: 'Все (${allApps.length})',
+                  active: filter == 'all',
+                  onTap: () => onFilterChange('all')),
                 const SizedBox(width: 8),
                 _FilterChip(
-                    label: 'Активные ($active)',
-                    active: filter == 'active',
-                    onTap: () => onFilterChange('active')),
+                  label: 'Активные ($active)',
+                  active: filter == 'active',
+                  onTap: () => onFilterChange('active')),
                 const SizedBox(width: 8),
                 _FilterChip(
-                    label: 'Принятые ($accepted)',
-                    active: filter == 'accepted',
-                    onTap: () => onFilterChange('accepted')),
+                  label: 'Принятые ($accepted)',
+                  active: filter == 'accepted',
+                  onTap: () => onFilterChange('accepted')),
               ],
             ),
           ),
           const SizedBox(height: 12),
           if (loading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: CircularProgressIndicator(color: _blue, strokeWidth: 2),
-              ),
-            )
+            const Center(child: Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(color: _blue, strokeWidth: 2),
+            ))
           else if (apps.isEmpty)
             _EmptyApplications()
           else
             ...apps.map((app) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _ApplicationCard(app: app, onReport: onReport),
-                )),
-          const SizedBox(height: 8),
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _ApplicationCard(app: app, onReport: onReport),
+            )),
         ],
       ),
     );
@@ -891,14 +979,12 @@ class _FilterChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: active ? _blue : _div),
         ),
-        child: Text(
-          label,
+        child: Text(label,
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
             color: active ? Colors.white : _sub,
-          ),
-        ),
+          )),
       ),
     );
   }
@@ -907,22 +993,21 @@ class _FilterChip extends StatelessWidget {
 class _EmptyApplications extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24),
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 24),
       child: Row(
         children: [
-          const Icon(Icons.search_rounded, size: 18, color: _sub),
-          const SizedBox(width: 10),
+          Icon(Icons.search_rounded, size: 18, color: _sub),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text('Ещё нет откликов',
-                    style: TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w600, color: _ink)),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _ink)),
                 SizedBox(height: 2),
                 Text('Просматривай стажировки и откликайся',
-                    style: TextStyle(fontSize: 13, color: _sub)),
+                  style: TextStyle(fontSize: 13, color: _sub)),
               ],
             ),
           ),
@@ -937,153 +1022,179 @@ class _ApplicationCard extends StatelessWidget {
   final void Function(Map<String, dynamic>) onReport;
   const _ApplicationCard({required this.app, required this.onReport});
 
+  static const _avatarColors = [
+    Color(0xFF3B82F6), Color(0xFF8B5CF6), Color(0xFF10B981),
+    Color(0xFFF59E0B), Color(0xFFEF4444), Color(0xFF06B6D4),
+  ];
+
+  Color _avatarColor(String name) =>
+      _avatarColors[name.codeUnits.fold(0, (a, b) => a + b) % _avatarColors.length];
+
+  String _initials(String name) {
+    if (name.isEmpty) return '?';
+    final words = name.trim().split(' ').where((w) => w.isNotEmpty).toList();
+    return words.length >= 2
+        ? '${words[0][0]}${words[1][0]}'.toUpperCase()
+        : name[0].toUpperCase();
+  }
+
+  String _fmtDate(String? iso) {
+    if (iso == null) return '';
+    try {
+      final dt = DateTime.parse(iso);
+      const m = ['', 'янв', 'фев', 'мар', 'апр', 'май', 'июн',
+          'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+      return '${dt.day} ${m[dt.month]}';
+    } catch (_) { return ''; }
+  }
+
   @override
   Widget build(BuildContext context) {
     final status    = app['status'] as String? ?? 'pending';
     final hasReport = app['has_report'] as bool? ?? false;
     final title     = app['internship_title'] as String? ?? '—';
-    final company   = app['company'] as String? ?? '—';
+    final company   = app['company'] as String? ?? app['company_name'] as String? ?? '—';
+    final city      = app['city'] as String? ?? app['internship_city'] as String? ?? '';
     final createdAt = app['created_at'] as String?;
+    final salaryKzt = app['salary_kzt'] as int?;
+    final duration  = app['duration'] as String?;
 
-    final (statusLabel, statusColor, statusBg, statusIcon) = switch (status) {
-      'accepted'  => ('Принят!', _green, const Color(0xFFD1FAE5), Icons.check_circle_outline_rounded),
-      'rejected'  => ('Отказано', _red, const Color(0xFFFEE2E2), Icons.cancel_outlined),
-      'completed' => ('Завершено', _sub, const Color(0xFFF1F5F9), Icons.school_outlined),
-      _ => ('Рассматривается', _blue, const Color(0xFFEBF0FA), Icons.hourglass_empty_rounded),
+    final (statusLabel, statusColor, statusBg) = switch (status) {
+      'accepted'  => ('Принят!',         const Color(0xFF059669), const Color(0xFFD1FAE5)),
+      'rejected'  => ('Отказано',        const Color(0xFFDC2626), const Color(0xFFFEE2E2)),
+      'interview' => ('Собеседование',   _blue,                   const Color(0xFFEFF4FF)),
+      'reviewed'  => ('Просмотрено',     const Color(0xFF6366F1), const Color(0xFFEEF2FF)),
+      _           => ('На рассмотрении', const Color(0xFFB45309), const Color(0xFFFEF3EC)),
     };
 
-    String? formattedDate;
-    if (createdAt != null) {
-      try {
-        final dt = DateTime.parse(createdAt);
-        const months = ['', 'янв', 'фев', 'мар', 'апр', 'май', 'июн',
-            'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
-        formattedDate = '${dt.day} ${months[dt.month]}';
-      } catch (_) {}
-    }
-
     return Container(
-      decoration: _cardDeco,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 40, height: 40,
-                  decoration: BoxDecoration(
-                    color: _surface,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: _div),
-                  ),
-                  child: Center(
-                    child: Text(
-                      company.isNotEmpty ? company[0].toUpperCase() : '?',
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w800, color: _blue),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FB),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top row
+          Row(
+            children: [
+              Container(
+                width: 30, height: 30,
+                decoration: BoxDecoration(
+                  color: _avatarColor(company),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(child: Text(_initials(company),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white))),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(company,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _blue),
+                        overflow: TextOverflow.ellipsis),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(company,
-                          style: const TextStyle(fontSize: 12, color: _sub)),
-                      Text(title,
-                          style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w700, color: _ink),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusBg,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(statusIcon, size: 12, color: statusColor),
+                    if (city.isNotEmpty) ...[
                       const SizedBox(width: 4),
-                      Text(statusLabel,
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: statusColor)),
+                      Text('· $city',
+                        style: const TextStyle(fontSize: 11, color: _sub)),
                     ],
-                  ),
+                  ],
                 ),
-              ],
-            ),
-            if (formattedDate != null) ...[
-              const SizedBox(height: 10),
-              const Divider(height: 1, color: _div),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  const Icon(Icons.calendar_today_outlined, size: 12, color: _sub),
-                  const SizedBox(width: 4),
-                  Text('Подано $formattedDate',
-                      style: const TextStyle(fontSize: 12, color: _sub)),
-                  const Spacer(),
-                  if (status == 'accepted')
-                    hasReport
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFD1FAE5),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Row(
-                              children: [
-                                Icon(Icons.check_circle_rounded,
-                                    size: 14, color: _green),
-                                SizedBox(width: 4),
-                                Text('Отчёт сдан',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: _green)),
-                              ],
-                            ),
-                          )
-                        : GestureDetector(
-                            onTap: () => onReport(app),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEBF0FA),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Row(
-                                children: [
-                                  Icon(Icons.edit_note_rounded,
-                                      size: 14, color: _blue),
-                                  SizedBox(width: 4),
-                                  Text('Сдать отчёт',
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: _blue)),
-                                ],
-                              ),
-                            ),
-                          ),
-                ],
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: statusBg,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(statusLabel,
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: statusColor)),
               ),
             ],
+          ),
+          const SizedBox(height: 6),
+          Text(title,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _ink),
+            maxLines: 2, overflow: TextOverflow.ellipsis),
+          if (salaryKzt != null || duration != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                if (salaryKzt != null) ...[
+                  _AppTag('${(salaryKzt / 1000).round()}K ₸',
+                    const Color(0xFF059669), const Color(0xFFECFDF5)),
+                  const SizedBox(width: 4),
+                ],
+                if (duration != null)
+                  _AppTag(duration, _sub, const Color(0xFFF1F5F9)),
+              ],
+            ),
           ],
-        ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.calendar_today_outlined, size: 11, color: _sub),
+              const SizedBox(width: 4),
+              Text('Подано ${_fmtDate(createdAt)}',
+                style: const TextStyle(fontSize: 11, color: _sub)),
+              const Spacer(),
+              if (status == 'accepted')
+                hasReport
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD1FAE5),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFF059669)),
+                          SizedBox(width: 4),
+                          Text('Отчёт сдан',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF059669))),
+                        ]),
+                      )
+                    : GestureDetector(
+                        onTap: () => onReport(app),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEBF0FA),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.edit_note_rounded, size: 12, color: _blue),
+                            SizedBox(width: 4),
+                            Text('Сдать отчёт',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _blue)),
+                          ]),
+                        ),
+                      ),
+            ],
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class _AppTag extends StatelessWidget {
+  final String text;
+  final Color color;
+  final Color bg;
+  const _AppTag(this.text, this.color, this.bg);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+      child: Text(text,
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
     );
   }
 }
@@ -1093,137 +1204,154 @@ class _SettingsSection extends StatelessWidget {
   final VoidCallback onLogout;
   const _SettingsSection({required this.onLogout});
 
+  void _openNotifications(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _NotificationsSheet(),
+    );
+  }
+
+  void _openChangePassword(BuildContext ctx, AuthService auth) {
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+        child: _ChangePasswordSheet(authService: auth),
+      ),
+    );
+  }
+
+  void _openAbout(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _AboutSheet(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(20, 20, 20, 4),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text('Настройки',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: _ink,
-                    letterSpacing: -0.3)),
-          ),
-        ),
-        ValueListenableBuilder<String>(
-          valueListenable: localeNotifier,
-          builder: (_, lang, _) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            child: Row(
-              children: [
-                const Icon(Icons.language_rounded, size: 20, color: _sub),
-                const SizedBox(width: 14),
-                const Expanded(
-                  child: Text('Язык',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: _ink)),
-                ),
-                for (final e in {'RU': 'ru', 'ҚЗ': 'kz', 'EN': 'en'}.entries)
-                  GestureDetector(
-                    onTap: () => setLocale(e.value),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      margin: const EdgeInsets.only(left: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: lang == e.value
-                            ? const Color(0xFFEBF0FA)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(7),
-                        border: Border.all(
-                          color: lang == e.value
-                              ? _blue
-                              : const Color(0xFFD1D5DB),
+    final auth = AuthService();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Настройки',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _ink)),
+          const SizedBox(height: 12),
+          // Language row
+          ValueListenableBuilder<String>(
+            valueListenable: localeNotifier,
+            builder: (_, lang, __) => _SettingsRow(
+              icon: Icons.language_rounded,
+              label: 'Язык',
+              right: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final e in {'RU': 'ru', 'ҚЗ': 'kz', 'EN': 'en'}.entries)
+                    GestureDetector(
+                      onTap: () => setLocale(e.value),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        margin: const EdgeInsets.only(left: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: lang == e.value ? _blue : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: lang == e.value ? _blue : _div,
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        e.key,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: lang == e.value ? _blue : _sub,
-                        ),
+                        child: Text(e.key,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: lang == e.value ? Colors.white : _sub,
+                          )),
                       ),
                     ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        const Divider(height: 1, indent: 54, color: _div),
-        _SettingsTile(
-          icon: Icons.notifications_outlined,
-          label: 'Уведомления',
-          onTap: () {},
-        ),
-        const Divider(height: 1, indent: 54, color: _div),
-        _SettingsTile(
-          icon: Icons.lock_outline_rounded,
-          label: 'Изменить пароль',
-          onTap: () {},
-        ),
-        const Divider(height: 1, indent: 54, color: _div),
-        _SettingsTile(
-          icon: Icons.info_outline_rounded,
-          label: 'О приложении',
-          onTap: () {},
-        ),
-        const Divider(height: 1, color: _div),
-        _SettingsTile(
-          icon: Icons.logout_rounded,
-          label: 'Выйти из аккаунта',
-          iconColor: _red,
-          labelColor: _red,
-          onTap: () async {
-            final confirm = await showDialog<bool>(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                title: const Text('Выйти?',
-                    style: TextStyle(fontWeight: FontWeight.w700)),
-                content: const Text(
-                    'Вы уверены, что хотите выйти из аккаунта?'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: const Text('Отмена'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    child:
-                        const Text('Выйти', style: TextStyle(color: _red)),
-                  ),
                 ],
               ),
-            );
-            if (confirm == true) onLogout();
-          },
-        ),
-      ],
+            ),
+          ),
+          const Divider(height: 1, thickness: 0.5, color: _div),
+          _SettingsRow(
+            icon: Icons.notifications_outlined,
+            label: 'Уведомления',
+            right: const Icon(Icons.chevron_right, size: 18, color: _sub),
+            onTap: () => _openNotifications(context),
+          ),
+          const Divider(height: 1, thickness: 0.5, color: _div),
+          _SettingsRow(
+            icon: Icons.lock_outline_rounded,
+            label: 'Изменить пароль',
+            right: const Icon(Icons.chevron_right, size: 18, color: _sub),
+            onTap: () => _openChangePassword(context, auth),
+          ),
+          const Divider(height: 1, thickness: 0.5, color: _div),
+          _SettingsRow(
+            icon: Icons.info_outline_rounded,
+            label: 'О приложении',
+            right: const Icon(Icons.chevron_right, size: 18, color: _sub),
+            onTap: () => _openAbout(context),
+          ),
+          const Divider(height: 1, thickness: 0.5, color: _div),
+          _SettingsRow(
+            icon: Icons.logout_rounded,
+            label: 'Выйти из аккаунта',
+            iconColor: _red,
+            labelColor: _red,
+            onTap: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  title: const Text('Выйти?',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                  content: const Text('Вы уверены, что хотите выйти из аккаунта?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Отмена'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Выйти', style: TextStyle(color: _red)),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) onLogout();
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
     );
   }
 }
 
-class _SettingsTile extends StatelessWidget {
+class _SettingsRow extends StatelessWidget {
   final IconData icon;
   final String label;
+  final Widget? right;
   final Color? iconColor;
   final Color? labelColor;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
-  const _SettingsTile({
+  const _SettingsRow({
     required this.icon,
     required this.label,
-    required this.onTap,
+    this.right,
     this.iconColor,
     this.labelColor,
+    this.onTap,
   });
 
   @override
@@ -1231,20 +1359,382 @@ class _SettingsTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: iconColor ?? _sub),
-            const SizedBox(width: 14),
+            Icon(icon, size: 18, color: iconColor ?? _sub),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(label,
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: labelColor ?? _ink)),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: labelColor ?? _ink,
+                )),
             ),
-            if (iconColor == null)
-              const Icon(Icons.chevron_right, size: 18, color: _sub),
+            if (right != null) right!,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Notifications Sheet ───────────────────────────────────────────────────────
+class _NotificationsSheet extends StatefulWidget {
+  const _NotificationsSheet();
+  @override
+  State<_NotificationsSheet> createState() => _NotificationsSheetState();
+}
+
+class _NotificationsSheetState extends State<_NotificationsSheet> {
+  bool _newJobs    = true;
+  bool _status     = true;
+  bool _messages   = false;
+  bool _tips       = true;
+  bool _loaded     = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final p = await SharedPreferences.getInstance();
+    if (mounted) setState(() {
+      _newJobs  = p.getBool('notif_new_jobs') ?? true;
+      _status   = p.getBool('notif_status')   ?? true;
+      _messages = p.getBool('notif_messages') ?? false;
+      _tips     = p.getBool('notif_tips')     ?? true;
+      _loaded   = true;
+    });
+  }
+
+  Future<void> _save(String key, bool value) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setBool(key, value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenW = MediaQuery.sizeOf(context).width;
+    final modalW  = screenW > 620 ? 560.0 : screenW;
+
+    final rows = [
+      (Icons.work_outline_rounded,  'Новые стажировки',    _newJobs,  'notif_new_jobs',  (bool v) => setState(() => _newJobs  = v)),
+      (Icons.assignment_turned_in_outlined, 'Статус заявки', _status, 'notif_status',    (bool v) => setState(() => _status   = v)),
+      (Icons.chat_bubble_outline_rounded, 'Сообщения',    _messages, 'notif_messages',   (bool v) => setState(() => _messages = v)),
+      (Icons.lightbulb_outline_rounded, 'Советы по профилю', _tips,  'notif_tips',       (bool v) => setState(() => _tips     = v)),
+    ];
+
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: SizedBox(
+        width: modalW,
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: const Color(0xFFE5E7EB), borderRadius: BorderRadius.circular(2)),
+              )),
+              const SizedBox(height: 14),
+              const Text('Уведомления',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: _ink)),
+              const SizedBox(height: 4),
+              if (!_loaded)
+                const Padding(padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Center(child: CircularProgressIndicator(color: _blue, strokeWidth: 2))),
+              if (_loaded)
+                ...rows.map((r) {
+                  final (icon, label, val, key, setter) = r;
+                  return Column(
+                    children: [
+                      const Divider(height: 20, thickness: 0.5, color: _div),
+                      Row(
+                        children: [
+                          Icon(icon, size: 18, color: _sub),
+                          const SizedBox(width: 12),
+                          Expanded(child: Text(label,
+                            style: const TextStyle(fontSize: 14, color: _ink))),
+                          Switch(
+                            value: val,
+                            activeColor: _blue,
+                            onChanged: (v) { setter(v); _save(key, v); },
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Change Password Sheet ─────────────────────────────────────────────────────
+class _ChangePasswordSheet extends StatefulWidget {
+  final AuthService authService;
+  const _ChangePasswordSheet({required this.authService});
+  @override
+  State<_ChangePasswordSheet> createState() => _ChangePasswordSheetState();
+}
+
+class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
+  final _current  = TextEditingController();
+  final _newPass  = TextEditingController();
+  final _confirm  = TextEditingController();
+  bool _hideCurrent = true;
+  bool _hideNew     = true;
+  bool _hideConfirm = true;
+  bool _saving      = false;
+
+  @override
+  void dispose() {
+    _current.dispose(); _newPass.dispose(); _confirm.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final cur = _current.text.trim();
+    final nw  = _newPass.text.trim();
+    final cf  = _confirm.text.trim();
+    if (cur.isEmpty || nw.isEmpty || cf.isEmpty) {
+      _snack('Заполните все поля', _red); return;
+    }
+    if (nw.length < 8) {
+      _snack('Новый пароль — минимум 8 символов', _red); return;
+    }
+    if (nw != cf) {
+      _snack('Пароли не совпадают', _red); return;
+    }
+    setState(() => _saving = true);
+    try {
+      await widget.authService.changePassword(currentPassword: cur, newPassword: nw);
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Text('Пароль изменён', style: TextStyle(fontWeight: FontWeight.w600)),
+          backgroundColor: _green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(16),
+        ));
+      }
+    } catch (e) {
+      _snack(e.toString().replaceAll('Exception: ', ''), _red);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  void _snack(String msg, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg, style: const TextStyle(fontWeight: FontWeight.w600)),
+      backgroundColor: color,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.all(16),
+    ));
+  }
+
+  InputDecoration _fieldDeco(String hint, IconData icon, bool hidden, VoidCallback toggle) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
+      prefixIcon: Icon(icon, size: 18, color: const Color(0xFF9CA3AF)),
+      suffixIcon: IconButton(
+        icon: Icon(hidden ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+          size: 18, color: const Color(0xFF9CA3AF)),
+        onPressed: toggle,
+      ),
+      filled: true,
+      fillColor: const Color(0xFFF8F9FB),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 0.5),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 0.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Color(0xFF2164F3), width: 1.5),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenW = MediaQuery.sizeOf(context).width;
+    final modalW  = screenW > 620 ? 560.0 : screenW;
+
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: SizedBox(
+        width: modalW,
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: const Color(0xFFE5E7EB), borderRadius: BorderRadius.circular(2)),
+              )),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  const Text('Изменить пароль',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: _ink)),
+                  const Spacer(),
+                  FilledButton(
+                    onPressed: _saving ? null : _submit,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _blue,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: _saving
+                        ? const SizedBox(width: 16, height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Сохранить',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: _current,
+                obscureText: _hideCurrent,
+                style: const TextStyle(fontSize: 14, color: _ink),
+                decoration: _fieldDeco('Текущий пароль', Icons.lock_outline_rounded,
+                    _hideCurrent, () => setState(() => _hideCurrent = !_hideCurrent)),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _newPass,
+                obscureText: _hideNew,
+                style: const TextStyle(fontSize: 14, color: _ink),
+                decoration: _fieldDeco('Новый пароль', Icons.lock_outline_rounded,
+                    _hideNew, () => setState(() => _hideNew = !_hideNew)),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _confirm,
+                obscureText: _hideConfirm,
+                style: const TextStyle(fontSize: 14, color: _ink),
+                decoration: _fieldDeco('Подтвердить пароль', Icons.lock_outline_rounded,
+                    _hideConfirm, () => setState(() => _hideConfirm = !_hideConfirm)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── About Sheet ───────────────────────────────────────────────────────────────
+class _AboutSheet extends StatelessWidget {
+  const _AboutSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final screenW = MediaQuery.sizeOf(context).width;
+    final modalW  = screenW > 620 ? 560.0 : screenW;
+
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: SizedBox(
+        width: modalW,
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: const Color(0xFFE5E7EB), borderRadius: BorderRadius.circular(2)),
+              )),
+              const SizedBox(height: 20),
+              const Icon(Icons.directions_walk_rounded, size: 48, color: _blue),
+              const SizedBox(height: 10),
+              const Text('Qadam',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: _ink)),
+              const SizedBox(height: 4),
+              const Text('Платформа стажировок Казахстана',
+                style: TextStyle(fontSize: 14, color: _sub),
+                textAlign: TextAlign.center),
+              const SizedBox(height: 4),
+              const Text('Версия 1.0.0',
+                style: TextStyle(fontSize: 12, color: _sub)),
+              const SizedBox(height: 16),
+              const Divider(thickness: 0.5, color: _div),
+              _AboutRow(
+                label: 'Политика конфиденциальности',
+                url: 'https://qadam.kz/privacy',
+              ),
+              const Divider(thickness: 0.5, color: _div),
+              _AboutRow(
+                label: 'Условия использования',
+                url: 'https://qadam.kz/terms',
+              ),
+              const Divider(thickness: 0.5, color: _div),
+              const SizedBox(height: 12),
+              const Text('© 2026 Qadam',
+                style: TextStyle(fontSize: 12, color: _sub)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AboutRow extends StatelessWidget {
+  final String label;
+  final String url;
+  const _AboutRow({required this.label, required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () async {
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) launchUrl(uri, mode: LaunchMode.externalApplication);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        child: Row(
+          children: [
+            Expanded(child: Text(label,
+              style: const TextStyle(fontSize: 14, color: _ink))),
+            const Icon(Icons.chevron_right, size: 18, color: _sub),
           ],
         ),
       ),
@@ -1287,201 +1777,164 @@ class _AiProfileCardState extends State<_AiProfileCard> {
     final analysis = _result?['analysis'] as String?;
     final missing  = (_result?['missing_fields'] as List?)?.cast<String>() ?? [];
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF4C1D95), Color(0xFF6D28D9)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF3730a3), Color(0xFF4338ca)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
         ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF6D28D9).withValues(alpha: 0.25),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 34, height: 34,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: const Icon(Icons.auto_awesome_rounded,
-                    color: Colors.white, size: 18),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('AI Анализ профиля',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800)),
-                    Text('Как усилить профиль для работодателя',
-                        style: TextStyle(color: Colors.white70, fontSize: 11)),
-                  ],
-                ),
-              ),
-              if (score != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(10),
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('AI Анализ профиля',
+                        style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+                      Text('Как усилить профиль для работодателя',
+                        style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    ],
                   ),
-                  child: Text('$score%',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900)),
                 ),
-            ],
-          ),
-          if (score != null) ...[
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: score / 100,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                minHeight: 5,
-              ),
+                if (score != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text('$score%',
+                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                  ),
+              ],
             ),
-            if (missing.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Добавь: ${missing.map(_fieldName).join(', ')}',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
+            if (score != null) ...[
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: score / 100,
+                  backgroundColor: Colors.white.withValues(alpha: 0.2),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                  minHeight: 4,
+                ),
               ),
+              if (missing.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text('Добавь: ${missing.map(_fieldName).join(', ')}',
+                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              ],
             ],
-          ],
-          if (analysis != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(analysis,
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: 13, height: 1.5)),
-            ),
-            const SizedBox(height: 10),
-            GestureDetector(
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const AiChatScreen(mode: AiChatMode.general),
-              )),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            if (analysis != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
+                  color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3)),
                 ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.chat_bubble_outline_rounded,
-                        color: Colors.white, size: 15),
-                    SizedBox(width: 6),
-                    Text('Обсудить с AI',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600)),
-                  ],
+                child: Text(analysis,
+                  style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.5)),
+              ),
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const AiChatScreen(mode: AiChatMode.general),
+                )),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 14),
+                      SizedBox(width: 6),
+                      Text('Обсудить с AI',
+                        style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ] else ...[
-            const SizedBox(height: 12),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(_error!,
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 12)),
-              ),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _loading ? null : _analyze,
-                icon: _loading
-                    ? const SizedBox(
-                        width: 14, height: 14,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.psychology_outlined,
-                        color: Colors.white, size: 18),
-                label: Text(
-                  _loading ? 'Анализирую...' : 'Проанализировать профиль',
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w700),
+            ] else ...[
+              const SizedBox(height: 12),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(_error!,
+                    style: const TextStyle(color: Colors.white70, fontSize: 12)),
                 ),
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.5)),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(vertical: 11),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _loading ? null : _analyze,
+                  icon: _loading
+                      ? const SizedBox(
+                          width: 14, height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.psychology_outlined, color: Colors.white, size: 16),
+                  label: Text(
+                    _loading ? 'Анализирую...' : 'Проанализировать профиль',
+                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
 
   String _fieldName(String key) => switch (key) {
-        'photo'      => 'фото',
-        'university' => 'университет',
-        'specialty'  => 'специальность',
-        'skills'     => 'навыки',
-        'bio'        => 'о себе',
-        'cv'         => 'CV',
-        _ => key,
-      };
+    'photo'      => 'фото',
+    'university' => 'университет',
+    'specialty'  => 'специальность',
+    'skills'     => 'навыки',
+    'bio'        => 'о себе',
+    'cv'         => 'CV',
+    _ => key,
+  };
 }
 
-// ── Edit Profile Sheet ────────────────────────────────────────────────────────
-class _EditProfileSheet extends StatefulWidget {
+// ── Edit Profile Dialog (LinkedIn-style) ─────────────────────────────────────
+class _EditProfileDialog extends StatefulWidget {
   final User user;
   final AuthService authService;
   final void Function(User) onSaved;
-  final int initialTab;
 
-  const _EditProfileSheet({
+  const _EditProfileDialog({
     required this.user,
     required this.authService,
     required this.onSaved,
-    this.initialTab = 0,
   });
 
   @override
-  State<_EditProfileSheet> createState() => _EditProfileSheetState();
+  State<_EditProfileDialog> createState() => _EditProfileDialogState();
 }
 
-class _EditProfileSheetState extends State<_EditProfileSheet>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabs;
+class _EditProfileDialogState extends State<_EditProfileDialog> {
   bool _saving = false;
+  final _scrollCtrl = ScrollController();
 
   late final TextEditingController _firstName;
   late final TextEditingController _lastName;
@@ -1489,28 +1942,43 @@ class _EditProfileSheetState extends State<_EditProfileSheet>
   late final TextEditingController _portfolio;
   late final TextEditingController _university;
   late final TextEditingController _specialty;
+  late final TextEditingController _gpaCtrl;
   int? _studyYear;
+  int? _graduationYear;
+
+  List<WorkExperience> _experiences = [];
+  bool _loadingExps = false;
 
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(
-        length: 2, vsync: this, initialIndex: widget.initialTab);
     _firstName  = TextEditingController(text: widget.user.firstName);
     _lastName   = TextEditingController(text: widget.user.lastName);
     _bio        = TextEditingController(text: widget.user.bio ?? '');
     _portfolio  = TextEditingController(text: widget.user.portfolioUrl ?? '');
     _university = TextEditingController(text: widget.user.universityName ?? '');
     _specialty  = TextEditingController(text: widget.user.specialty ?? '');
-    _studyYear  = widget.user.studyYear;
+    _gpaCtrl    = TextEditingController(
+        text: widget.user.gpa != null ? widget.user.gpa.toString() : '');
+    _studyYear      = widget.user.studyYear;
+    _graduationYear = widget.user.graduationYear;
+    _loadExperiences();
+  }
+
+  Future<void> _loadExperiences() async {
+    setState(() => _loadingExps = true);
+    try {
+      final exps = await widget.authService.getExperiences();
+      if (mounted) setState(() { _experiences = exps; _loadingExps = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loadingExps = false);
+    }
   }
 
   @override
   void dispose() {
-    _tabs.dispose();
-    for (final c in [
-      _firstName, _lastName, _bio, _portfolio, _university, _specialty
-    ]) {
+    _scrollCtrl.dispose();
+    for (final c in [_firstName, _lastName, _bio, _portfolio, _university, _specialty, _gpaCtrl]) {
       c.dispose();
     }
     super.dispose();
@@ -1527,6 +1995,8 @@ class _EditProfileSheetState extends State<_EditProfileSheet>
         universityName: _university.text.trim(),
         specialty:      _specialty.text.trim(),
         studyYear:      _studyYear,
+        gpa:            double.tryParse(_gpaCtrl.text.trim()),
+        graduationYear: _graduationYear,
       );
       widget.onSaved(updated);
       if (mounted) Navigator.pop(context);
@@ -1542,74 +2012,284 @@ class _EditProfileSheetState extends State<_EditProfileSheet>
     }
   }
 
+  void _openExpForm(WorkExperience? exp) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        child: _ExperienceFormSheet(
+          existing: exp,
+          authService: widget.authService,
+          onSaved: (saved) {
+            setState(() {
+              if (exp == null) {
+                _experiences.add(saved);
+              } else {
+                final idx = _experiences.indexWhere((e) => e.id == saved.id);
+                if (idx >= 0) _experiences[idx] = saved;
+              }
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _deleteExp(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Удалить?', style: TextStyle(fontWeight: FontWeight.w700)),
+        content: const Text('Удалить эту запись об опыте?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Удалить', style: TextStyle(color: _red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    try {
+      await widget.authService.deleteExperience(id);
+      setState(() => _experiences.removeWhere((e) => e.id == id));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: _red,
+        ));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
+    final screenH = MediaQuery.sizeOf(context).height;
+
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      clipBehavior: Clip.antiAlias,
+      elevation: 8,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 560, maxHeight: screenH * 0.88),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 12),
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(
-                    color: _div,
-                    borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 16),
+            // ── Header ─────────────────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.fromLTRB(24, 18, 12, 14),
               child: Row(
                 children: [
-                  const Text('Редактировать профиль',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w800)),
+                  Text('Редактировать профиль',
+                    style: GoogleFonts.inter(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: _ink,
+                    )),
                   const Spacer(),
-                  FilledButton(
-                    onPressed: _saving ? null : _save,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _blue,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                    ),
-                    child: _saving
-                        ? const SizedBox(
-                            width: 16, height: 16,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white))
-                        : const Text('Сохранить',
-                            style: TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w700)),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded, size: 22, color: _sub),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            TabBar(
-              controller: _tabs,
-              labelStyle: const TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w600),
-              labelColor: _blue,
-              unselectedLabelColor: _sub,
-              indicatorColor: _blue,
-              indicatorSize: TabBarIndicatorSize.label,
-              tabs: const [Tab(text: 'Обо мне'), Tab(text: 'Образование')],
+            const Divider(height: 1, thickness: 1, color: _div),
+            // ── Scrollable body ─────────────────────────────────────────────────
+            Flexible(
+              child: SingleChildScrollView(
+                controller: _scrollCtrl,
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // — Основные сведения
+                    _LiSection('Основные сведения'),
+                    const SizedBox(height: 20),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: _LiField(label: 'Имя', ctrl: _firstName)),
+                        const SizedBox(width: 12),
+                        Expanded(child: _LiField(label: 'Фамилия', ctrl: _lastName)),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    _LiField(
+                      label: 'О себе',
+                      ctrl: _bio,
+                      hint: 'Расскажи о себе — работодатели читают это первым',
+                      maxLength: 300,
+                      maxLines: 4,
+                      minLines: 3,
+                    ),
+                    const SizedBox(height: 18),
+                    _LiField(
+                      label: 'Portfolio URL',
+                      ctrl: _portfolio,
+                      hint: 'GitHub, Behance, Dribbble...',
+                    ),
+                    const SizedBox(height: 32),
+                    const Divider(thickness: 0.5, color: _div),
+                    const SizedBox(height: 24),
+                    // — Образование
+                    _LiSection('Образование'),
+                    const SizedBox(height: 20),
+                    _LiField(
+                      label: 'Университет',
+                      ctrl: _university,
+                      hint: 'Название учебного заведения',
+                    ),
+                    const SizedBox(height: 18),
+                    _LiField(
+                      label: 'Специальность',
+                      ctrl: _specialty,
+                      hint: 'Направление обучения',
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _LiDropdown<int>(
+                            label: 'Курс',
+                            value: _studyYear,
+                            hint: 'Выбери курс',
+                            items: const [
+                              DropdownMenuItem(value: 1, child: Text('1 курс')),
+                              DropdownMenuItem(value: 2, child: Text('2 курс')),
+                              DropdownMenuItem(value: 3, child: Text('3 курс')),
+                              DropdownMenuItem(value: 4, child: Text('4 курс')),
+                              DropdownMenuItem(value: 5, child: Text('5 курс (магистр)')),
+                            ],
+                            onChanged: (v) => setState(() => _studyYear = v),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _LiDropdown<int>(
+                            label: 'Год выпуска',
+                            value: _graduationYear,
+                            hint: 'Выбери год',
+                            items: List.generate(10, (i) {
+                              final y = DateTime.now().year - 3 + i;
+                              return DropdownMenuItem(value: y, child: Text('$y'));
+                            }),
+                            onChanged: (v) => setState(() => _graduationYear = v),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    _LiField(label: 'GPA', ctrl: _gpaCtrl, hint: 'Например: 3.8'),
+                    const SizedBox(height: 32),
+                    const Divider(thickness: 0.5, color: _div),
+                    const SizedBox(height: 24),
+                    // — Опыт работы
+                    Row(
+                      children: [
+                        Expanded(child: _LiSection('Опыт работы')),
+                        GestureDetector(
+                          onTap: () => _openExpForm(null),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: _blue),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text('+ Добавить',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: _blue,
+                              )),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    if (_loadingExps)
+                      const Center(child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: CircularProgressIndicator(color: _blue, strokeWidth: 2),
+                      ))
+                    else if (_experiences.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8F9FB),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: _div, width: 0.5),
+                        ),
+                        child: const Column(
+                          children: [
+                            Icon(Icons.work_outline_rounded, size: 36, color: Color(0xFFD1D5DB)),
+                            SizedBox(height: 8),
+                            Text('Нет записей об опыте',
+                              style: TextStyle(fontSize: 14, color: _sub)),
+                          ],
+                        ),
+                      )
+                    else
+                      ...(_experiences.map((exp) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _ExpTile(
+                          exp: exp,
+                          onEdit: () => _openExpForm(exp),
+                          onDelete: () => _deleteExp(exp.id),
+                        ),
+                      ))),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
             ),
-            SizedBox(
-              height: 340,
-              child: TabBarView(
-                controller: _tabs,
-                children: [_buildIdentityTab(), _buildEducationTab()],
+            // ── Footer ─────────────────────────────────────────────────────────
+            const Divider(height: 1, thickness: 1, color: _div),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    ),
+                    child: Text('Отмена',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: _sub,
+                        fontWeight: FontWeight.w500,
+                      )),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: _saving ? null : _save,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _blue,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                    child: _saving
+                        ? const SizedBox(width: 16, height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : Text('Сохранить',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            )),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1617,70 +2297,137 @@ class _EditProfileSheetState extends State<_EditProfileSheet>
       ),
     );
   }
+}
 
-  Widget _buildIdentityTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-      child: Column(
-        children: [
-          _SheetField(ctrl: _firstName, label: 'Имя', icon: Icons.person_outline),
-          const SizedBox(height: 12),
-          _SheetField(ctrl: _lastName, label: 'Фамилия', icon: Icons.person_outline),
-          const SizedBox(height: 12),
-          _SheetField(ctrl: _bio, label: 'Bio — расскажи о себе',
-              icon: Icons.notes_rounded, maxLines: 3),
-          const SizedBox(height: 12),
-          _SheetField(ctrl: _portfolio,
-              label: 'Portfolio URL (GitHub, Behance...)',
-              icon: Icons.link_rounded),
-        ],
-      ),
+// ── LinkedIn-style form helpers ───────────────────────────────────────────────
+
+class _LiSection extends StatelessWidget {
+  final String title;
+  const _LiSection(this.title);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(title,
+      style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w600, color: _ink));
+  }
+}
+
+class _LiField extends StatelessWidget {
+  final String label;
+  final TextEditingController ctrl;
+  final String? hint;
+  final int? maxLength;
+  final int maxLines;
+  final int minLines;
+
+  const _LiField({
+    required this.label,
+    required this.ctrl,
+    this.hint,
+    this.maxLength,
+    this.maxLines = 1,
+    this.minLines = 1,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: _ink,
+          )),
+        const SizedBox(height: 6),
+        TextField(
+          controller: ctrl,
+          maxLines: maxLines,
+          minLines: minLines,
+          maxLength: maxLength,
+          style: GoogleFonts.inter(fontSize: 14, color: _ink),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF9CA3AF)),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            counterStyle: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: const BorderSide(color: _blue, width: 1.5),
+            ),
+          ),
+        ),
+      ],
     );
   }
+}
 
-  Widget _buildEducationTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-      child: Column(
-        children: [
-          _SheetField(ctrl: _university, label: 'Университет',
-              icon: Icons.school_outlined),
-          const SizedBox(height: 12),
-          _SheetField(ctrl: _specialty, label: 'Специальность',
-              icon: Icons.book_outlined),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<int>(
-            initialValue: _studyYear,
-            decoration: InputDecoration(
-              labelText: 'Курс',
-              prefixIcon:
-                  const Icon(Icons.calendar_month_outlined, size: 20),
-              filled: true,
-              fillColor: _surface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: _div),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: _div),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: _blue, width: 1.5),
-              ),
+class _LiDropdown<T> extends StatelessWidget {
+  final String label;
+  final T? value;
+  final String? hint;
+  final List<DropdownMenuItem<T>> items;
+  final void Function(T?) onChanged;
+
+  const _LiDropdown({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+    this.hint,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: _ink,
+          )),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<T>(
+          value: value,
+          hint: hint != null
+              ? Text(hint!,
+                  style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF9CA3AF)))
+              : null,
+          style: GoogleFonts.inter(fontSize: 14, color: _ink),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1),
             ),
-            items: const [
-              DropdownMenuItem(value: 1, child: Text('1 курс')),
-              DropdownMenuItem(value: 2, child: Text('2 курс')),
-              DropdownMenuItem(value: 3, child: Text('3 курс')),
-              DropdownMenuItem(value: 4, child: Text('4 курс')),
-              DropdownMenuItem(value: 5, child: Text('5 курс (магистр)')),
-            ],
-            onChanged: (v) => setState(() => _studyYear = v),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: const BorderSide(color: _blue, width: 1.5),
+            ),
           ),
-        ],
-      ),
+          items: items,
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 }
@@ -1690,11 +2437,13 @@ class _SheetField extends StatelessWidget {
   final String label;
   final IconData icon;
   final int maxLines;
+  final int minLines;
   const _SheetField({
     required this.ctrl,
     required this.label,
     required this.icon,
     this.maxLines = 1,
+    this.minLines = 1,
   });
 
   @override
@@ -1702,22 +2451,362 @@ class _SheetField extends StatelessWidget {
     return TextField(
       controller: ctrl,
       maxLines: maxLines,
+      minLines: minLines,
+      style: const TextStyle(fontSize: 14, color: _ink),
       decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 20),
+        hintText: label,
+        hintStyle: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
+        prefixIcon: Icon(icon, size: 18, color: const Color(0xFF9CA3AF)),
         filled: true,
-        fillColor: _surface,
+        fillColor: const Color(0xFFF8F9FB),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _div),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _div),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _blue, width: 1.5),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF2164F3), width: 1.5),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Experience Tile ───────────────────────────────────────────────────────────
+class _ExpTile extends StatelessWidget {
+  final WorkExperience exp;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  const _ExpTile({required this.exp, required this.onEdit, required this.onDelete});
+
+  static const _typeLabels = {
+    'internship': 'Стажировка',
+    'job': 'Работа',
+    'freelance': 'Фриланс',
+    'volunteer': 'Волонтёрство',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final typeLabel = _typeLabels[exp.expType] ?? exp.expType;
+    final period = exp.isCurrent
+        ? '${exp.startDate} — по наст. вр.'
+        : '${exp.startDate}${exp.endDate != null ? ' — ${exp.endDate}' : ''}';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _div),
+      ),
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.work_outline_rounded, size: 18, color: _blue),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(exp.title,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _ink)),
+                Text('${exp.organization} · $typeLabel',
+                  style: const TextStyle(fontSize: 12, color: _sub)),
+                Text(period, style: const TextStyle(fontSize: 11, color: _sub)),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit_outlined, size: 16, color: _sub),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
+          IconButton(
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete_outline, size: 16, color: _red),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Experience Form Sheet ─────────────────────────────────────────────────────
+class _ExperienceFormSheet extends StatefulWidget {
+  final WorkExperience? existing;
+  final AuthService authService;
+  final void Function(WorkExperience) onSaved;
+
+  const _ExperienceFormSheet({
+    required this.existing,
+    required this.authService,
+    required this.onSaved,
+  });
+
+  @override
+  State<_ExperienceFormSheet> createState() => _ExperienceFormSheetState();
+}
+
+class _ExperienceFormSheetState extends State<_ExperienceFormSheet> {
+  late final TextEditingController _title;
+  late final TextEditingController _org;
+  late final TextEditingController _startDate;
+  late final TextEditingController _endDate;
+  late final TextEditingController _desc;
+  String _expType = 'internship';
+  bool _isCurrent = false;
+  bool _saving = false;
+
+  static const _types = {
+    'internship': 'Стажировка',
+    'job': 'Работа',
+    'freelance': 'Фриланс',
+    'volunteer': 'Волонтёрство',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    _title     = TextEditingController(text: e?.title ?? '');
+    _org       = TextEditingController(text: e?.organization ?? '');
+    _startDate = TextEditingController(text: e?.startDate ?? '');
+    _endDate   = TextEditingController(text: e?.endDate ?? '');
+    _desc      = TextEditingController(text: e?.description ?? '');
+    _expType   = e?.expType ?? 'internship';
+    _isCurrent = e?.isCurrent ?? false;
+  }
+
+  @override
+  void dispose() {
+    for (final c in [_title, _org, _startDate, _endDate, _desc]) { c.dispose(); }
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_title.text.trim().isEmpty || _org.text.trim().isEmpty || _startDate.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Заполните название, организацию и дату начала'),
+        backgroundColor: _red,
+      ));
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final data = {
+        'title': _title.text.trim(),
+        'organization': _org.text.trim(),
+        'exp_type': _expType,
+        'start_date': _startDate.text.trim(),
+        'end_date': _isCurrent ? null : (_endDate.text.trim().isEmpty ? null : _endDate.text.trim()),
+        'is_current': _isCurrent,
+        'description': _desc.text.trim().isEmpty ? null : _desc.text.trim(),
+      };
+      WorkExperience saved;
+      if (widget.existing == null) {
+        saved = await widget.authService.createExperience(data);
+      } else {
+        saved = await widget.authService.updateExperience(widget.existing!.id, data);
+      }
+      widget.onSaved(saved);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: _red,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const _fieldDeco = InputDecoration(
+      filled: true,
+      fillColor: Color(0xFFF8F9FB),
+      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      hintStyle: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(10)),
+        borderSide: BorderSide(color: Color(0xFFE5E7EB), width: 0.5),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(10)),
+        borderSide: BorderSide(color: Color(0xFFE5E7EB), width: 0.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(10)),
+        borderSide: BorderSide(color: Color(0xFF2164F3), width: 1.5),
+      ),
+    );
+    const _iconColor = Color(0xFF9CA3AF);
+    const _fieldStyle = TextStyle(fontSize: 14, color: _ink);
+
+    final screenW = MediaQuery.sizeOf(context).width;
+    final modalW = screenW > 620 ? 560.0 : screenW;
+
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: SizedBox(
+        width: modalW,
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE5E7EB),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Text(
+                      widget.existing == null ? 'Добавить опыт' : 'Редактировать опыт',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: _ink),
+                    ),
+                    const Spacer(),
+                    FilledButton(
+                      onPressed: _saving ? null : _submit,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _blue,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: _saving
+                          ? const SizedBox(width: 16, height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Сохранить',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _title,
+                        style: _fieldStyle,
+                        decoration: _fieldDeco.copyWith(
+                          hintText: 'Должность / Название',
+                          prefixIcon: const Icon(Icons.work_outline_rounded, size: 18, color: _iconColor),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _org,
+                        style: _fieldStyle,
+                        decoration: _fieldDeco.copyWith(
+                          hintText: 'Организация',
+                          prefixIcon: const Icon(Icons.business_outlined, size: 18, color: _iconColor),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: _expType,
+                        style: _fieldStyle,
+                        decoration: _fieldDeco.copyWith(
+                          labelText: 'Тип',
+                          prefixIcon: const Icon(Icons.category_outlined, size: 18, color: _iconColor),
+                        ),
+                        items: _types.entries
+                            .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                            .toList(),
+                        onChanged: (v) => setState(() => _expType = v ?? _expType),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _startDate,
+                              style: _fieldStyle,
+                              decoration: _fieldDeco.copyWith(
+                                hintText: 'Начало (ГГГГ-ММ)',
+                                prefixIcon: const Icon(Icons.calendar_today_outlined, size: 18, color: _iconColor),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: _endDate,
+                              enabled: !_isCurrent,
+                              style: _fieldStyle,
+                              decoration: _fieldDeco.copyWith(
+                                hintText: 'Конец (ГГГГ-ММ)',
+                                prefixIcon: const Icon(Icons.calendar_today_outlined, size: 18, color: _iconColor),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: () => setState(() => _isCurrent = !_isCurrent),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              Checkbox(
+                                value: _isCurrent,
+                                onChanged: (v) => setState(() => _isCurrent = v ?? false),
+                                activeColor: _blue,
+                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              const Text('По настоящее время',
+                                style: TextStyle(fontSize: 13, color: _ink)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _desc,
+                        maxLines: 3,
+                        minLines: 2,
+                        style: _fieldStyle,
+                        decoration: _fieldDeco.copyWith(
+                          hintText: 'Описание (необязательно)',
+                          prefixIcon: const Icon(Icons.notes_rounded, size: 18, color: _iconColor),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1773,150 +2862,149 @@ class _SkillsSheetState extends State<_SkillsSheet> {
   @override
   Widget build(BuildContext context) {
     final suggestions = _suggestions.where((s) => !_skills.contains(s)).toList();
+    final screenW = MediaQuery.sizeOf(context).width;
+    final modalW = screenW > 620 ? 560.0 : screenW;
 
     return Padding(
-      padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(
-                      color: _div,
-                      borderRadius: BorderRadius.circular(2))),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: SizedBox(
+          width: modalW,
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
-            const SizedBox(height: 16),
-            Row(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Навыки',
-                    style: TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w800)),
-                const Spacer(),
-                FilledButton(
-                  onPressed: _saving ? null : _save,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _blue,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                  ),
-                  child: _saving
-                      ? const SizedBox(
-                          width: 16, height: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : const Text('Сохранить',
-                          style: TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w700)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _ctrl,
-                    decoration: InputDecoration(
-                      hintText: 'Добавить навык...',
-                      filled: true,
-                      fillColor: _surface,
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: _div)),
-                      enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: _div)),
-                      focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: _blue, width: 1.5)),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE5E7EB),
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    onSubmitted: _add,
                   ),
                 ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: () => _add(_ctrl.text),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _blue,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    minimumSize: const Size(48, 48),
-                  ),
-                  child: const Icon(Icons.add, color: Colors.white),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    const Text('Навыки',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: _ink)),
+                    const Spacer(),
+                    FilledButton(
+                      onPressed: _saving ? null : _save,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _blue,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: _saving
+                          ? const SizedBox(width: 16, height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Сохранить',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _ctrl,
+                        style: const TextStyle(fontSize: 14, color: _ink),
+                        decoration: InputDecoration(
+                          hintText: 'Добавить навык...',
+                          hintStyle: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
+                          filled: true,
+                          fillColor: const Color(0xFFF8F9FB),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 0.5),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 0.5),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Color(0xFF2164F3), width: 1.5),
+                          ),
+                        ),
+                        onSubmitted: _add,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 44, height: 44,
+                      child: Material(
+                        color: _blue,
+                        borderRadius: BorderRadius.circular(10),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: () => _add(_ctrl.text),
+                          child: const Icon(Icons.add, color: Colors.white, size: 20),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                if (_skills.isNotEmpty) ...[
+                  const Text('Добавлено:',
+                    style: TextStyle(fontSize: 12, color: _sub, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8, runSpacing: 8,
+                    children: _skills.map((s) =>
+                      _RemovableChip(label: s, onRemove: () => _remove(s))).toList(),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+                if (suggestions.isNotEmpty) ...[
+                  const Text('Популярные:',
+                    style: TextStyle(fontSize: 12, color: _sub, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8, runSpacing: 8,
+                    children: suggestions.take(14).map((s) => GestureDetector(
+                      onTap: () => _add(s),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFE5E7EB), width: 0.5),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.add, size: 13, color: _blue),
+                            const SizedBox(width: 4),
+                            Text(s, style: const TextStyle(fontSize: 13, color: _sub)),
+                          ],
+                        ),
+                      ),
+                    )).toList(),
+                  ),
+                ],
+                const SizedBox(height: 8),
               ],
             ),
-            const SizedBox(height: 14),
-            if (_skills.isNotEmpty) ...[
-              const Text('Добавлено:',
-                  style: TextStyle(fontSize: 12, color: _sub)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _skills
-                    .map((s) =>
-                        _RemovableChip(label: s, onRemove: () => _remove(s)))
-                    .toList(),
-              ),
-              const SizedBox(height: 14),
-            ],
-            if (suggestions.isNotEmpty) ...[
-              const Text('Популярные:',
-                  style: TextStyle(fontSize: 12, color: _sub)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: suggestions
-                    .take(12)
-                    .map((s) => GestureDetector(
-                          onTap: () => _add(s),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: _surface,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: _div),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.add, size: 12, color: _sub),
-                                const SizedBox(width: 4),
-                                Text(s,
-                                    style: const TextStyle(
-                                        fontSize: 12, color: _sub)),
-                              ],
-                            ),
-                          ),
-                        ))
-                    .toList(),
-              ),
-            ],
-            const SizedBox(height: 8),
-          ],
+          ),
         ),
       ),
     );
   }
 }
-
 
 class _RemovableChip extends StatelessWidget {
   final String label;
@@ -1926,21 +3014,20 @@ class _RemovableChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(left: 12, top: 6, bottom: 6, right: 4),
+      padding: const EdgeInsets.only(left: 12, top: 5, bottom: 5, right: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFEBF0FA),
+        color: _blue,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(label,
-              style: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600, color: _blue)),
-          const SizedBox(width: 4),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white)),
+          const SizedBox(width: 6),
           GestureDetector(
             onTap: onRemove,
-            child: const Icon(Icons.close, size: 14, color: _blue),
+            child: const Icon(Icons.close, size: 14, color: Colors.white),
           ),
         ],
       ),
@@ -1953,18 +3040,14 @@ class _ReportSheet extends StatefulWidget {
   final Map<String, dynamic> app;
   final ApiService apiService;
   final VoidCallback onSuccess;
-  const _ReportSheet({
-    required this.app,
-    required this.apiService,
-    required this.onSuccess,
-  });
+  const _ReportSheet({required this.app, required this.apiService, required this.onSuccess});
 
   @override
   State<_ReportSheet> createState() => _ReportSheetState();
 }
 
 class _ReportSheetState extends State<_ReportSheet> {
-  final _tasks    = TextEditingController();
+  final _tasks     = TextEditingController();
   final _skillCtrl = TextEditingController();
   int _hours = 0;
   final List<String> _skillsGained = [];
@@ -2003,6 +3086,13 @@ class _ReportSheetState extends State<_ReportSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final fieldDeco = InputDecoration(
+      filled: true, fillColor: _surface,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _div)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _div)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _blue, width: 1.5)),
+    );
+
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -2016,80 +3106,50 @@ class _ReportSheetState extends State<_ReportSheet> {
           children: [
             Center(
               child: Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(
-                      color: _div,
-                      borderRadius: BorderRadius.circular(2))),
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: _div, borderRadius: BorderRadius.circular(2)),
+              ),
             ),
             const SizedBox(height: 20),
             const Text('Отчёт о стажировке',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
             const SizedBox(height: 20),
             TextField(
               controller: _tasks,
               maxLines: 4,
-              decoration: InputDecoration(
+              decoration: fieldDeco.copyWith(
                 labelText: 'Описание задач',
                 alignLabelWithHint: true,
-                filled: true,
-                fillColor: _surface,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _div)),
-                enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _div)),
-                focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _blue, width: 1.5)),
               ),
             ),
             const SizedBox(height: 16),
             Row(
               children: [
-                const Text('Часов отработано:',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text('Часов отработано:', style: TextStyle(fontWeight: FontWeight.w600)),
                 const Spacer(),
                 IconButton(
-                  onPressed: () =>
-                      setState(() => _hours = (_hours - 10).clamp(0, 1000)),
+                  onPressed: () => setState(() => _hours = (_hours - 10).clamp(0, 1000)),
                   icon: const Icon(Icons.remove_circle_outline, color: _blue),
                 ),
-                Text('$_hours',
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w700)),
+                Text('$_hours', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 IconButton(
-                  onPressed: () =>
-                      setState(() => _hours = (_hours + 10).clamp(0, 1000)),
+                  onPressed: () => setState(() => _hours = (_hours + 10).clamp(0, 1000)),
                   icon: const Icon(Icons.add_circle_outline, color: _blue),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             const Text('Навыки, полученные на стажировке:',
-                style: TextStyle(fontWeight: FontWeight.w600)),
+              style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _skillCtrl,
-                    decoration: InputDecoration(
+                    decoration: fieldDeco.copyWith(
                       hintText: 'Добавить навык...',
-                      filled: true,
-                      fillColor: _surface,
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: _div)),
-                      enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: _div)),
-                      focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: _blue, width: 1.5)),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     ),
                     onSubmitted: (s) {
                       final skill = s.trim();
@@ -2111,8 +3171,7 @@ class _ReportSheetState extends State<_ReportSheet> {
                   },
                   style: FilledButton.styleFrom(
                     backgroundColor: _blue,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     minimumSize: const Size(48, 48),
                   ),
                   child: const Icon(Icons.add, color: Colors.white),
@@ -2122,35 +3181,27 @@ class _ReportSheetState extends State<_ReportSheet> {
             if (_skillsGained.isNotEmpty) ...[
               const SizedBox(height: 10),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _skillsGained
-                    .map((s) => _RemovableChip(
-                        label: s,
-                        onRemove: () =>
-                            setState(() => _skillsGained.remove(s))))
-                    .toList(),
+                spacing: 8, runSpacing: 8,
+                children: _skillsGained.map((s) => _RemovableChip(
+                  label: s,
+                  onRemove: () => setState(() => _skillsGained.remove(s)),
+                )).toList(),
               ),
             ],
             const SizedBox(height: 24),
             SizedBox(
-              width: double.infinity,
-              height: 50,
+              width: double.infinity, height: 50,
               child: FilledButton(
                 onPressed: _saving ? null : _submit,
                 style: FilledButton.styleFrom(
                   backgroundColor: _blue,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: _saving
-                    ? const SizedBox(
-                        width: 20, height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(width: 20, height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Text('Отправить отчёт',
-                        style: TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w700)),
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
               ),
             ),
           ],

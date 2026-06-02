@@ -156,6 +156,29 @@ class AuthService {
     }
   }
 
+  /// Change password (requires current password)
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final token = await getToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/change-password'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: json.encode({
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      }),
+    );
+    if (response.statusCode != 200) {
+      final error = json.decode(response.body);
+      throw Exception(error['detail'] ?? 'Ошибка смены пароля');
+    }
+  }
+
   /// Reset password
   Future<void> resetPassword({required String email, required String newPassword}) async {
     final response = await http.post(
@@ -180,6 +203,8 @@ class AuthService {
     String? universityName,
     String? specialty,
     int? studyYear,
+    double? gpa,
+    int? graduationYear,
     String? portfolioUrl,
   }) async {
     final token = await getToken();
@@ -193,6 +218,8 @@ class AuthService {
     if (universityName != null) body['university_name'] = universityName;
     if (specialty != null) body['specialty'] = specialty;
     if (studyYear != null) body['study_year'] = studyYear;
+    if (gpa != null) body['gpa'] = gpa;
+    if (graduationYear != null) body['graduation_year'] = graduationYear;
     if (portfolioUrl != null) body['portfolio_url'] = portfolioUrl;
 
     final response = await http.put(
@@ -232,6 +259,60 @@ class AuthService {
     } else {
       final error = json.decode(response.body);
       throw Exception(error['detail'] ?? 'Ошибка входа через Google');
+    }
+  }
+
+  // ── Work Experience ────────────────────────────────────────────────────────
+  Future<List<WorkExperience>> getExperiences() async {
+    final token = await getToken();
+    final response = await http.get(
+      Uri.parse('$baseUrl/auth/experience'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> list = json.decode(response.body);
+      return list.map((j) => WorkExperience.fromJson(j as Map<String, dynamic>)).toList();
+    }
+    throw Exception('Не удалось загрузить опыт');
+  }
+
+  Future<WorkExperience> createExperience(Map<String, dynamic> data) async {
+    final token = await getToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/experience'),
+      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+      body: json.encode(data),
+    );
+    if (response.statusCode == 200) {
+      return WorkExperience.fromJson(json.decode(response.body) as Map<String, dynamic>);
+    }
+    final error = json.decode(response.body);
+    throw Exception(error['detail'] ?? 'Ошибка создания');
+  }
+
+  Future<WorkExperience> updateExperience(int id, Map<String, dynamic> data) async {
+    final token = await getToken();
+    final response = await http.put(
+      Uri.parse('$baseUrl/auth/experience/$id'),
+      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+      body: json.encode(data),
+    );
+    if (response.statusCode == 200) {
+      return WorkExperience.fromJson(json.decode(response.body) as Map<String, dynamic>);
+    }
+    final error = json.decode(response.body);
+    throw Exception(error['detail'] ?? 'Ошибка обновления');
+  }
+
+  Future<void> deleteExperience(int id) async {
+    final token = await getToken();
+    final response = await http.delete(
+      Uri.parse('$baseUrl/auth/experience/$id'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode != 200) {
+      final error = json.decode(response.body);
+      throw Exception(error['detail'] ?? 'Ошибка удаления');
     }
   }
 

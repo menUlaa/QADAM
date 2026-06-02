@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.auth import verify_password, get_password_hash, create_access_token, decode_access_token
 from app.users import UserCreate, UserLogin, UserResponse, get_user_by_email, get_user_by_id, create_user
+from app.models import WorkExperience
 from app.email_service import send_verification_email, EMAIL_ENABLED
 
 UPLOADS_DIR = Path("uploads")
@@ -247,6 +248,34 @@ def google_login(body: GoogleLoginBody, db: Session = Depends(get_db)):
     }
 
 
+# ── Change password (authenticated) ──────────────────────────────────────────
+
+class ChangePasswordBody(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/change-password")
+def change_password(
+    body: ChangePasswordBody,
+    credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
+    db: Session = Depends(get_db),
+):
+    payload = decode_access_token(credentials.credentials)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user = get_user_by_id(db, payload["sub"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not verify_password(body.current_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Текущий пароль неверен")
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Новый пароль должен содержать минимум 8 символов")
+    user.hashed_password = get_password_hash(body.new_password)
+    db.commit()
+    return {"message": "Пароль успешно изменён"}
+
+
 # ── Reset password ─────────────────────────────────────────────────────────────
 
 class ResetPasswordBody(BaseModel):
@@ -314,6 +343,8 @@ class UpdateProfileBody(BaseModel):
     university_name: Optional[str] = None
     specialty: Optional[str] = None
     study_year: Optional[int] = None
+    gpa: Optional[float] = None
+    graduation_year: Optional[int] = None
     portfolio_url: Optional[str] = None
 
 
@@ -350,9 +381,125 @@ def update_profile(
         user.specialty = body.specialty.strip() or None
     if body.study_year is not None:
         user.study_year = body.study_year
+    if body.gpa is not None:
+        user.gpa = body.gpa
+    if body.graduation_year is not None:
+        user.graduation_year = body.graduation_year
     if body.portfolio_url is not None:
         user.portfolio_url = body.portfolio_url.strip() or None
 
     db.commit()
     db.refresh(user)
     return UserResponse.model_validate(user)
+
+
+# ── Work Experience CRUD ────────────────────────────────────────────────────────
+
+class ExperienceCreate(BaseModel):
+    title: str
+    organization: str
+    exp_type: str = "internship"   # internship | volunteer | project | other
+    start_date: str
+    end_date: Optional[str] = None
+    is_current: bool = False
+    description: Optional[str] = None
+
+
+@router.get("/experience")
+def get_experience(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+):
+    payload = decode_access_token(credentials.credentials)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user_id = payload.get("user_id")
+    exps = db.query(WorkExperience).filter(
+        WorkExperience.user_id == user_id
+    ).order_by(WorkExperience.start_date.desc()).all()
+    return [_exp_to_dict(e) for e in exps]
+
+
+@router.post("/experience", status_code=201)
+def create_experience(
+    body: ExperienceCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+):
+    payload = decode_access_token(credentials.credentials)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    exp = WorkExperience(
+        user_id=payload["user_id"],
+        title=body.title.strip(),
+        organization=body.organization.strip(),
+        exp_type=body.exp_type,
+        start_date=body.start_date,
+        end_date=None if body.is_current else body.end_date,
+        is_current=body.is_current,
+        description=body.description,
+    )
+    db.add(exp)
+    db.commit()
+    db.refresh(exp)
+    return _exp_to_dict(exp)
+
+
+@router.put("/experience/{exp_id}")
+def update_experience(
+    exp_id: int,
+    body: ExperienceCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+):
+    payload = decode_access_token(credentials.credentials)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    exp = db.query(WorkExperience).filter(
+        WorkExperience.id == exp_id,
+        WorkExperience.user_id == payload["user_id"],
+    ).first()
+    if not exp:
+        raise HTTPException(status_code=404, detail="Not found")
+    exp.title        = body.title.strip()
+    exp.organization = body.organization.strip()
+    exp.exp_type     = body.exp_type
+    exp.start_date   = body.start_date
+    exp.end_date     = None if body.is_current else body.end_date
+    exp.is_current   = body.is_current
+    exp.description  = body.description
+    db.commit()
+    return _exp_to_dict(exp)
+
+
+@router.delete("/experience/{exp_id}")
+def delete_experience(
+    exp_id: int,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+):
+    payload = decode_access_token(credentials.credentials)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    exp = db.query(WorkExperience).filter(
+        WorkExperience.id == exp_id,
+        WorkExperience.user_id == payload["user_id"],
+    ).first()
+    if not exp:
+        raise HTTPException(status_code=404, detail="Not found")
+    db.delete(exp)
+    db.commit()
+    return {"ok": True}
+
+
+def _exp_to_dict(e: WorkExperience) -> dict:
+    return {
+        "id": e.id,
+        "title": e.title,
+        "organization": e.organization,
+        "exp_type": e.exp_type,
+        "start_date": e.start_date,
+        "end_date": e.end_date,
+        "is_current": e.is_current,
+        "description": e.description,
+    }

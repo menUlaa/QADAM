@@ -602,6 +602,18 @@ class _HistorySheetState extends State<_HistorySheet> {
   }
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+String _cleanMarkdown(String text) {
+  return text
+      .replaceAll(RegExp(r'#{1,6}\s?'), '')
+      .replaceAllMapped(RegExp(r'\*\*(.+?)\*\*'), (m) => m.group(1) ?? '')
+      .replaceAllMapped(RegExp(r'\*(.+?)\*'), (m) => m.group(1) ?? '')
+      .replaceAllMapped(RegExp(r'`(.+?)`'), (m) => m.group(1) ?? '')
+      .replaceAll(RegExp(r'^\s*[-•]\s', multiLine: true), '• ')
+      .trim();
+}
+
 // ── Reusable widgets ─────────────────────────────────────────────────────────
 
 class _Msg {
@@ -675,7 +687,7 @@ class _MessageBubble extends StatelessWidget {
                 ],
               ),
               child: Text(
-                msg.text,
+                _cleanMarkdown(msg.text),
                 style: TextStyle(
                   fontSize: 14,
                   height: 1.5,

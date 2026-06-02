@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:internship_app2/screens/role_selection_screen.dart';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -40,6 +41,16 @@ class LandingScreen extends StatelessWidget {
     );
   }
 
+  void _goToCompanies(BuildContext context) {
+    Navigator.pushNamed(context, '/companies',
+        arguments: () => _goToAuth(context));
+  }
+
+  void _goToUniversities(BuildContext context) {
+    Navigator.pushNamed(context, '/universities',
+        arguments: () => _goToAuth(context));
+  }
+
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.sizeOf(context).width;
@@ -52,7 +63,12 @@ class LandingScreen extends StatelessWidget {
         children: [
           SafeArea(
             bottom: false,
-            child: _Nav(onAuth: () => _goToAuth(context), isDesktop: isDesktop),
+            child: _Nav(
+              onAuth: () => _goToAuth(context),
+              onCompanies: () => _goToCompanies(context),
+              onUniversities: () => _goToUniversities(context),
+              isDesktop: isDesktop,
+            ),
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -63,8 +79,18 @@ class LandingScreen extends StatelessWidget {
                     isDesktop: isDesktop,
                   ),
                   _StatsSection(isDesktop: isDesktop),
+                  _HowItWorksSection(
+                    onAction: () => _goToAuth(context),
+                    isDesktop: isDesktop,
+                  ),
                   _CategoriesSection(
                     onTap: () => _goToAuth(context),
+                    isDesktop: isDesktop,
+                  ),
+                  _RolesSection(
+                    onStudentTap: () => _goToAuth(context),
+                    onCompanyTap: () => _goToAuth(context),
+                    onUniversityTap: () => _goToUniversities(context),
                     isDesktop: isDesktop,
                   ),
                   const _Footer(),
@@ -84,8 +110,15 @@ class LandingScreen extends StatelessWidget {
 
 class _Nav extends StatelessWidget {
   final VoidCallback onAuth;
+  final VoidCallback onCompanies;
+  final VoidCallback onUniversities;
   final bool isDesktop;
-  const _Nav({required this.onAuth, required this.isDesktop});
+  const _Nav({
+    required this.onAuth,
+    required this.onCompanies,
+    required this.onUniversities,
+    required this.isDesktop,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -101,8 +134,8 @@ class _Nav extends StatelessWidget {
           const _Logo(),
           if (isDesktop) ...[
             const SizedBox(width: 32),
-            _NavLink('Компаниям'),
-            _NavLink('Университетам'),
+            _cursorPointer(child: GestureDetector(onTap: onCompanies, child: _NavLink('Компаниям'))),
+            _cursorPointer(child: GestureDetector(onTap: onUniversities, child: _NavLink('Университетам'))),
           ],
           const Spacer(),
           TextButton(
@@ -138,7 +171,7 @@ class _Logo extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Image.asset(
-          'assets/images/logo.png',
+          'assets/images/logo.jpg',
           width: 32,
           height: 32,
           errorBuilder: (_, __, ___) => ShaderMask(
@@ -159,7 +192,7 @@ class _Logo extends StatelessWidget {
         ShaderMask(
           shaderCallback: (b) => _brandGradient.createShader(b),
           child: const Text(
-            'qadam',
+            'Qadam',
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w900,
@@ -693,6 +726,198 @@ class _MobileSearch extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// How It Works
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _HowItWorksSection extends StatelessWidget {
+  final VoidCallback onAction;
+  final bool isDesktop;
+  const _HowItWorksSection({required this.onAction, required this.isDesktop});
+
+  static const _steps = [
+    (
+      '1',
+      'Зарегистрируйся',
+      'Создай аккаунт за 1 минуту — имя, email, университет и специальность.',
+      Icons.person_add_alt_1_outlined,
+      Color(0xFF2563EB),
+    ),
+    (
+      '2',
+      'Заполни профиль',
+      'Добавь навыки, загрузи CV и укажи интересующие тебя направления.',
+      Icons.edit_note_rounded,
+      Color(0xFF7C3AED),
+    ),
+    (
+      '3',
+      'Найди стажировку',
+      'Просматривай вакансии, используй AI-ассистента и подай заявку в один клик.',
+      Icons.search_rounded,
+      Color(0xFF0891B2),
+    ),
+    (
+      '4',
+      'Получи оффер',
+      'Отслеживай статус заявок и жди звонка от компании.',
+      Icons.check_circle_outline_rounded,
+      Color(0xFF16A34A),
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: _bg,
+      padding: EdgeInsets.symmetric(
+          vertical: 64, horizontal: isDesktop ? 56 : 24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 900),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _blue.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(color: _blue.withValues(alpha: 0.18)),
+                ),
+                child: const Text(
+                  'Как это работает',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _blue),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Четыре шага до первой стажировки',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: isDesktop ? 28 : 22,
+                  fontWeight: FontWeight.w800,
+                  color: _ink,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Весь процесс занимает меньше 5 минут',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 15, color: _body),
+              ),
+              SizedBox(height: isDesktop ? 48 : 36),
+              isDesktop
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: _steps.asMap().entries.map((e) {
+                        final isLast = e.key == _steps.length - 1;
+                        return Expanded(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: _StepCard(step: e.value)),
+                              if (!isLast)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 28),
+                                  child: Icon(Icons.arrow_forward_rounded,
+                                      size: 18, color: _muted),
+                                ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    )
+                  : Column(
+                      children: _steps.asMap().entries.map((e) {
+                        final isLast = e.key == _steps.length - 1;
+                        return Column(
+                          children: [
+                            _StepCard(step: e.value),
+                            if (!isLast) ...[
+                              const SizedBox(height: 4),
+                              const Icon(Icons.arrow_downward_rounded,
+                                  size: 18, color: _muted),
+                              const SizedBox(height: 4),
+                            ],
+                          ],
+                        );
+                      }).toList(),
+                    ),
+              const SizedBox(height: 40),
+              _GradientButton(
+                label: 'Начать бесплатно',
+                onTap: onAction,
+                icon: Icons.arrow_forward_rounded,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StepCard extends StatelessWidget {
+  final (String, String, String, IconData, Color) step;
+  const _StepCard({required this.step});
+
+  @override
+  Widget build(BuildContext context) {
+    final (num, title, desc, icon, color) = step;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 18, color: color),
+              ),
+              const Spacer(),
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  num,
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 15, fontWeight: FontWeight.w700, color: _ink)),
+          const SizedBox(height: 6),
+          Text(desc,
+              style: const TextStyle(fontSize: 13, color: _body, height: 1.5)),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Stats
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -777,8 +1002,7 @@ class _StatItem extends StatelessWidget {
 class _CategoriesSection extends StatelessWidget {
   final VoidCallback onTap;
   final bool isDesktop;
-  const _CategoriesSection(
-      {required this.onTap, required this.isDesktop});
+  const _CategoriesSection({required this.onTap, required this.isDesktop});
 
   static const _items = [
     ('IT и разработка',  Icons.code_rounded,            Color(0xFF2563EB)),
@@ -794,39 +1018,39 @@ class _CategoriesSection extends StatelessWidget {
     return Container(
       color: _bg,
       padding: EdgeInsets.symmetric(
-          vertical: 52, horizontal: isDesktop ? 56 : 24),
+          vertical: 56, horizontal: isDesktop ? 56 : 24),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 680),
+          constraints: const BoxConstraints(maxWidth: 900),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Популярные направления',
-                style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: _ink,
-                    letterSpacing: -0.3),
-              ),
+              Text('Популярные направления',
+                  style: GoogleFonts.inter(
+                      fontSize: 22, fontWeight: FontWeight.w800,
+                      color: _ink, letterSpacing: -0.4)),
               const SizedBox(height: 6),
-              const Text(
-                'Выбери область и найди стажировку по интересам',
-                style: TextStyle(fontSize: 14, color: _body),
-              ),
-              const SizedBox(height: 24),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: _items
-                    .map((item) => _CategoryCard(
-                          label: item.$1,
-                          icon: item.$2,
-                          color: item.$3,
-                          onTap: onTap,
-                        ))
-                    .toList(),
-              ),
+              Text('Выбери область и найди стажировку по интересам',
+                  style: GoogleFonts.inter(
+                      fontSize: 14, color: _body)),
+              const SizedBox(height: 28),
+              isDesktop
+                  ? Row(
+                      children: _items.map((item) => Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 10),
+                          child: _CategoryCard(
+                              label: item.$1, icon: item.$2,
+                              color: item.$3, onTap: onTap),
+                        ),
+                      )).toList(),
+                    )
+                  : Wrap(
+                      spacing: 10, runSpacing: 10,
+                      children: _items.map((item) => _CategoryCard(
+                          label: item.$1, icon: item.$2,
+                          color: item.$3, onTap: onTap)).toList(),
+                    ),
             ],
           ),
         ),
@@ -841,10 +1065,8 @@ class _CategoryCard extends StatefulWidget {
   final Color color;
   final VoidCallback onTap;
   const _CategoryCard({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.onTap,
+    required this.label, required this.icon,
+    required this.color, required this.onTap,
   });
 
   @override
@@ -864,58 +1086,234 @@ class _CategoryCardState extends State<_CategoryCard> {
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           decoration: BoxDecoration(
-            color: _hovered
-                ? widget.color.withValues(alpha: 0.06)
-                : _surface,
-            borderRadius: BorderRadius.circular(10),
+            color: _hovered ? widget.color.withValues(alpha: 0.06) : _surface,
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: _hovered
-                  ? widget.color.withValues(alpha: 0.35)
-                  : _border,
+              color: _hovered ? widget.color.withValues(alpha: 0.4) : _border,
               width: 1.5,
             ),
             boxShadow: _hovered
-                ? [
-                    BoxShadow(
-                        color: widget.color.withValues(alpha: 0.12),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4))
-                  ]
+                ? [BoxShadow(color: widget.color.withValues(alpha: 0.1),
+                    blurRadius: 14, offset: const Offset(0, 4))]
                 : [],
           ),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: widget.color.withValues(alpha: _hovered ? 0.15 : 0.09),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(widget.icon, size: 18, color: widget.color),
+              ),
+              const SizedBox(height: 10),
+              Text(widget.label,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _hovered ? widget.color : _ink,
+                  )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Roles — For Students / Companies / Universities
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _RolesSection extends StatelessWidget {
+  final VoidCallback onStudentTap;
+  final VoidCallback onCompanyTap;
+  final VoidCallback onUniversityTap;
+  final bool isDesktop;
+  const _RolesSection({
+    required this.onStudentTap,
+    required this.onCompanyTap,
+    required this.onUniversityTap,
+    required this.isDesktop,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: _surface,
+      padding: EdgeInsets.symmetric(
+          vertical: 56, horizontal: isDesktop ? 56 : 24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 900),
+          child: isDesktop
+              ? LayoutBuilder(builder: (_, cst) {
+                  final w = (cst.maxWidth - 24) / 3;
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(width: w, child: _RoleCard(
+                            title: 'Для студентов',
+                            description: 'Найди стажировку, создай профиль и получи оффер от лучших компаний Казахстана',
+                            icon: Icons.school_rounded,
+                            colors: const [Color(0xFF2563EB), Color(0xFF3B82F6)],
+                            cta: 'Найти стажировку →',
+                            onTap: onStudentTap,
+                          )),
+                      const SizedBox(width: 12),
+                      SizedBox(width: w, child: _RoleCard(
+                            title: 'Для компаний',
+                            description: 'Публикуй вакансии, управляй заявками и нанимай лучших стажёров',
+                            icon: Icons.business_rounded,
+                            colors: const [Color(0xFF1E293B), Color(0xFF334155)],
+                            cta: 'Разместить вакансию →',
+                            onTap: onCompanyTap,
+                          )),
+                      const SizedBox(width: 12),
+                      SizedBox(width: w, child: _RoleCard(
+                            title: 'Для университетов',
+                            description: 'Отслеживай трудоустройство студентов и анализируй данные',
+                            icon: Icons.account_balance_rounded,
+                            colors: const [Color(0xFF7C3AED), Color(0xFF9333EA)],
+                            cta: 'Войти в портал →',
+                            onTap: onUniversityTap,
+                          )),
+                    ],
+                  );
+                })
+              : Column(
+                  children: [
+                    _RoleCard(
+                      title: 'Для студентов',
+                      description: 'Ищи стажировки, создавай профиль и получай офферы от лучших компаний',
+                      icon: Icons.school_rounded,
+                      colors: const [Color(0xFF2563EB), Color(0xFF3B82F6)],
+                      cta: 'Найти стажировку →',
+                      onTap: onStudentTap,
+                    ),
+                    const SizedBox(height: 12),
+                    _RoleCard(
+                      title: 'Для компаний',
+                      description: 'Публикуй стажировки, управляй кандидатами и нанимай таланты',
+                      icon: Icons.business_rounded,
+                      colors: const [Color(0xFF1E293B), Color(0xFF334155)],
+                      cta: 'Разместить вакансию →',
+                      onTap: onCompanyTap,
+                    ),
+                    const SizedBox(height: 12),
+                    _RoleCard(
+                      title: 'Для университетов',
+                      description: 'Отслеживай трудоустройство студентов и анализируй статистику',
+                      icon: Icons.account_balance_rounded,
+                      colors: const [Color(0xFF7C3AED), Color(0xFF9333EA)],
+                      cta: 'Войти в портал →',
+                      onTap: onUniversityTap,
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RoleCard extends StatefulWidget {
+  final String title;
+  final String description;
+  final IconData icon;
+  final List<Color> colors;
+  final String cta;
+  final VoidCallback onTap;
+  const _RoleCard({
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.colors,
+    required this.cta,
+    required this.onTap,
+  });
+
+  @override
+  State<_RoleCard> createState() => _RoleCardState();
+}
+
+class _RoleCardState extends State<_RoleCard> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: widget.colors,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: _hovered
+                    ? widget.colors.first.withValues(alpha: 0.38)
+                    : Colors.black.withValues(alpha: 0.08),
+                blurRadius: _hovered ? 22 : 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: 32,
-                height: 32,
+              Container(
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: widget.color.withValues(
-                      alpha: _hovered ? 0.15 : 0.08),
-                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(widget.icon,
-                    size: 16, color: widget.color),
+                child: Icon(widget.icon, color: Colors.white, size: 22),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(height: 20),
               Text(
-                widget.label,
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                  color: _hovered ? widget.color : _ink,
+                widget.title,
+                style: GoogleFonts.inter(
+                  fontSize: 18, fontWeight: FontWeight.w800,
+                  color: Colors.white, letterSpacing: -0.2,
                 ),
               ),
-              const SizedBox(width: 6),
-              AnimatedOpacity(
-                opacity: _hovered ? 1 : 0,
-                duration: const Duration(milliseconds: 180),
-                child: Icon(Icons.arrow_forward_rounded,
-                    size: 13, color: widget.color),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 48,
+                child: Text(
+                  widget.description,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: Colors.white.withValues(alpha: 0.82),
+                    height: 1.55,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                widget.cta,
+                style: GoogleFonts.inter(
+                  fontSize: 13, fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
               ),
             ],
           ),
@@ -949,7 +1347,7 @@ class _Footer extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Image.asset(
-                      'assets/images/logo.png',
+                      'assets/images/logo.jpg',
                       width: 24,
                       height: 24,
                       errorBuilder: (_, _, _) => ShaderMask(
@@ -962,7 +1360,7 @@ class _Footer extends StatelessWidget {
                     ShaderMask(
                       shaderCallback: (b) =>
                           _brandGradient.createShader(b),
-                      child: const Text('qadam',
+                      child: const Text('Qadam',
                           style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w900,
@@ -978,23 +1376,9 @@ class _Footer extends StatelessWidget {
                         style: TextStyle(fontSize: 13, color: _body)),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 20,
-                  runSpacing: 8,
-                  children: const [
-                    _FooterLink('Справка'),
-                    _FooterLink('Конфиденциальность'),
-                    _FooterLink('Условия'),
-                    _FooterLink('Компаниям'),
-                    _FooterLink('Университетам'),
-                    _FooterLink('О нас'),
-                  ],
-                ),
                 const SizedBox(height: 14),
                 const Text(
-                  '© 2025 Qadam',
+                  '© 2026 Qadam',
                   style: TextStyle(fontSize: 12, color: _muted),
                 ),
               ],
@@ -1022,3 +1406,4 @@ class _FooterLink extends StatelessWidget {
     );
   }
 }
+

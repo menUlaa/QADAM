@@ -23,7 +23,7 @@ class _MainScreenState extends State<MainScreen> {
 
     final screens = [
       FeedScreen(),
-      FavoritesScreen(),
+      FavoritesScreen(onGoToFeed: () => setState(() => _currentIndex = 0)),
       const ApplicationsScreen(),
       const AiChatScreen(),
       ProfileScreen(onLogout: widget.onLogout),
@@ -119,14 +119,30 @@ class _DesktopHeader extends StatelessWidget {
       child: Row(
         children: [
           // Logo
-          const Text(
-            'Qadam',
-            style: TextStyle(
-              color: Color(0xFF2164F3),
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.5,
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/logo.jpg',
+                  width: 28,
+                  height: 28,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, err, stack) => const SizedBox.shrink(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Qadam',
+                style: TextStyle(
+                  color: Color(0xFF2164F3),
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: 40),
 

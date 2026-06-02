@@ -14,7 +14,7 @@ Tables:
 
 from sqlalchemy import (
     Column, Integer, String, Boolean, Text, JSON,
-    ForeignKey, DateTime, Float, UniqueConstraint, Index,
+    ForeignKey, DateTime, Float, Numeric, UniqueConstraint, Index,
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -56,6 +56,13 @@ class User(Base):
     # Legacy JSON skills kept for backward-compat; normalised in user_skills
     skills        = Column(JSON, default=list)
 
+    # Education (denormalised for quick access)
+    university_name = Column(String(200), nullable=True)
+    specialty       = Column(String(200), nullable=True)
+    study_year      = Column(Integer,     nullable=True)
+    gpa             = Column(Numeric(3, 2), nullable=True)
+    graduation_year = Column(Integer,     nullable=True)
+
     # Timestamps
     created_at    = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -68,6 +75,7 @@ class User(Base):
     skill_links      = relationship("UserSkill",       back_populates="user")
     conversations    = relationship("AiConversation",  back_populates="user")
     reviews          = relationship("CompanyReview",   back_populates="user")
+    experiences      = relationship("WorkExperience",  back_populates="user", cascade="all, delete-orphan")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -222,6 +230,10 @@ class Internship(Base):
     # Legacy skills JSON — still populated for backward-compat
     skills       = Column(JSON, nullable=False, default=list)
 
+    # External source (HH.kz)
+    hh_id        = Column(String(50),  nullable=True, unique=True, index=True)
+    external_url = Column(String(500), nullable=True)
+
     # Lifecycle
     is_active    = Column(Boolean, default=True,  nullable=False, index=True)
     deadline     = Column(DateTime, nullable=True)
@@ -248,6 +260,7 @@ class Application(Base):
     user_id        = Column(Integer, ForeignKey("users.id",        ondelete="CASCADE"), nullable=False, index=True)
     internship_id  = Column(Integer, ForeignKey("internships.id",  ondelete="CASCADE"), nullable=False, index=True)
     message        = Column(Text, nullable=True)
+    cv_url         = Column(String(500), nullable=True)   # snapshot of cv at time of apply
 
     # Status: pending | accepted | rejected | completed
     status         = Column(String(50), default="pending", nullable=False, index=True)
@@ -345,6 +358,26 @@ class Notification(Base):
     created_at  = Column(DateTime, default=datetime.utcnow, index=True)
 
     user = relationship("User", back_populates="notifications")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# WORK EXPERIENCE
+# ─────────────────────────────────────────────────────────────────────────────
+class WorkExperience(Base):
+    __tablename__ = "work_experiences"
+
+    id           = Column(Integer, primary_key=True, index=True)
+    user_id      = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    title        = Column(String(200), nullable=False)       # "Flutter Developer Intern"
+    organization = Column(String(200), nullable=False)       # "Kaspi Bank"
+    exp_type     = Column(String(50),  default="internship") # internship | volunteer | project | other
+    start_date   = Column(String(20),  nullable=False)       # "2024-01"
+    end_date     = Column(String(20),  nullable=True)        # "2024-06" or null if current
+    is_current   = Column(Boolean,     default=False)
+    description  = Column(Text,        nullable=True)
+    created_at   = Column(DateTime,    default=datetime.utcnow)
+
+    user = relationship("User", back_populates="experiences")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

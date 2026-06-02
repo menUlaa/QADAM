@@ -15,8 +15,14 @@ log = logging.getLogger(__name__)
 # ── New columns to add if missing ────────────────────────────────────────────
 _NEW_COLUMNS = [
     # (table, column, sql_type, default_sql)
-    ("users",        "bio",            "TEXT",          None),
-    ("users",        "open_to_work",   "BOOLEAN",       "TRUE"),
+    ("users",        "bio",              "TEXT",          None),
+    ("users",        "open_to_work",    "BOOLEAN",       "TRUE"),
+    ("users",        "university_name", "VARCHAR(200)",   None),
+    ("users",        "specialty",       "VARCHAR(200)",   None),
+    ("users",        "study_year",      "INTEGER",        None),
+    ("users",        "gpa",             "NUMERIC(3,2)",   None),
+    ("users",        "graduation_year", "INTEGER",        None),
+    ("applications", "cv_url",          "VARCHAR(500)",   None),
     ("users",        "cv_filename",    "VARCHAR(200)",   None),
     ("users",        "cv_uploaded_at", "TIMESTAMP",     None),
     ("users",        "avatar_url",     "VARCHAR(500)",   None),
@@ -29,6 +35,8 @@ _NEW_COLUMNS = [
     ("internships",  "is_active",      "BOOLEAN",       "TRUE"),
     ("internships",  "deadline",       "TIMESTAMP",     None),
     ("internships",  "updated_at",     "TIMESTAMP",     None),
+    ("internships",  "hh_id",          "VARCHAR(50)",   None),
+    ("internships",  "external_url",   "VARCHAR(500)",  None),
     ("applications", "updated_at",     "TIMESTAMP",     None),
     # universities — make login fields optional
     ("universities", "short_name",     "VARCHAR(50)",    None),

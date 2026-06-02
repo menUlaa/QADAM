@@ -633,7 +633,7 @@ class _QadamLogo extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Image.asset(
-          'assets/images/logo.png',
+          'assets/images/logo.jpg',
           width: 32,
           height: 32,
           errorBuilder: (_, _, _) => Container(
@@ -652,7 +652,7 @@ class _QadamLogo extends StatelessWidget {
           shaderCallback: (b) => const LinearGradient(
             colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
           ).createShader(b),
-          child: const Text('qadam',
+          child: const Text('Qadam',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w900,

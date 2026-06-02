@@ -33,6 +33,8 @@ class UserResponse(BaseModel):
     university_name: Optional[str] = None
     specialty: Optional[str] = None
     study_year: Optional[int] = None
+    gpa: Optional[float] = None
+    graduation_year: Optional[int] = None
     cv_url: Optional[str] = None
     cv_filename: Optional[str] = None
     cv_uploaded_at: Optional[str] = None
@@ -59,6 +61,8 @@ class UserResponse(BaseModel):
             "university_name": getattr(obj, "university_name", None),
             "specialty": getattr(obj, "specialty", None),
             "study_year": getattr(obj, "study_year", None),
+            "gpa": float(getattr(obj, "gpa", None)) if getattr(obj, "gpa", None) is not None else None,
+            "graduation_year": getattr(obj, "graduation_year", None),
             "cv_url": getattr(obj, "cv_url", None),
             "cv_filename": getattr(obj, "cv_filename", None),
             "cv_uploaded_at": cv_uploaded_at.isoformat() if cv_uploaded_at else None,
